@@ -52,20 +52,20 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
 void run_server(int server_socket) {
 	int sent_datagrams = 1;
 	while (1) {
-		int client_socket;
+		int client_socket = 0;
 		socklen_t client_addr_length;
 		struct sockaddr_in client_addr;
-		char *received;
+		struct message received;
 
 		printf("Server is waiting for data\n");
 		received = receive_message(server_socket, &client_addr, &client_addr_length);
-		printf("Client sent: %s", received);
-		sendAck(server_socket, client_addr, client_addr_length, &sent_datagrams, received);
+		printf("Client sent: %s", received.data);
+		respond(server_socket, client_addr, client_addr_length, &sent_datagrams, received);
 
 		close(client_socket);
 
 //		TODO remove
-		if(sent_datagrams < 0) {
+		if (sent_datagrams < 0) {
 			break;
 		}
 	}

@@ -1,11 +1,32 @@
 #ifndef COMMUNICATION
 #define COMMUNICATION
 
-char *receive_message(int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length);
+/*
+ * Constant for size of the datagram "header"
+ * */
+static const int PEEK_SIZE = 30;
+/*
+ * Constant for timeout before recvfrom stops waiting for data
+ * */
+static const int TIMEOUT = 5;
 
-void sendAck(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length, int *sent_datagrams,
-             char *received);
+/*
+ * Structure for messages
+ * */
+struct message {
+	/*Sequence number of datagram*/
+	int number;
+	/*Type of data in datagram*/
+	int type;
+	/*Size of data in datagram*/
+	int size;
+	/*Data in datagram*/
+	char *data;
+};
 
-void sendMessage(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length, char *message);
+struct message receive_message(int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length);
+
+int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length, int *sent_datagrams,
+            struct message received);
 
 #endif
