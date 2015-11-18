@@ -10,7 +10,7 @@ char *receive_message(int server_socket, struct sockaddr_in *client_addr, sockle
 	char *received;
 
 	*client_addr_length = sizeof(*client_addr);
-	read_bytes = recvfrom(server_socket, received, 100, 0, (struct sockaddr *) client_addr, client_addr_length);
+	read_bytes = (int) recvfrom(server_socket, received, 100, 0, (struct sockaddr *) client_addr, client_addr_length);
 	*client_addr_length = sizeof(*client_addr);
 	received[read_bytes] = '\0';
 
