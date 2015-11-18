@@ -21,7 +21,7 @@ struct sockaddr_in create_server_socket(int *server_socket) {
 	return server_addr;
 }
 
-void bind_server_socket(int server_socket, struct sockaddr_in server_addr, int server_addr_length) {
+void bind_server_socket(int server_socket, struct sockaddr_in server_addr, socklen_t server_addr_length) {
 	if (bind(server_socket, (struct sockaddr *) &server_addr, server_addr_length) != 0) {
 		fprintf(stderr, "Bind ERROR\n");
 		exit(-1);
@@ -31,9 +31,10 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, int s
 }
 
 void run_server(int server_socket) {
-	int sent_datagrams = 0;
+	int sent_datagrams = 1;
 	while (1) {
-		int client_socket, client_addr_length;
+		int client_socket;
+		socklen_t client_addr_length;
 		struct sockaddr_in client_addr;
 		char *received;
 
@@ -44,6 +45,7 @@ void run_server(int server_socket) {
 
 		close(client_socket);
 
+//		TODO remove
 		if(sent_datagrams < 0) {
 			break;
 		}

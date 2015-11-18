@@ -6,7 +6,7 @@
 
 int main(void) {
 	int server_socket;
-	int server_addr_length;
+	socklen_t server_addr_length;
 	struct sockaddr_in server_addr;
 
 	server_addr = create_server_socket(&server_socket);
