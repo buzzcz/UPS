@@ -4,6 +4,9 @@
 #include <arpa/inet.h>
 #include "server.h"
 
+/*
+ * Main entry point of the program
+ * */
 int main(void) {
 	int server_socket;
 	socklen_t server_addr_length;
