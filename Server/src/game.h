@@ -47,8 +47,10 @@ struct game {
 };
 
 struct player *create_player(struct sockaddr_in client_addr, socklen_t client_addr_length, int opponents, char *name);
+void add_player_to_game(struct game **games, struct player *player);
+struct player *find_player(struct game **games, struct sockaddr_in client_addr);
+int is_already_logged(struct game **games, char *name);
 void remove_player(struct game **games, char *name);
-void add_game(struct game **games, int players_count, struct player *player);
 void remove_game(struct game **games, int id);
 
 #endif

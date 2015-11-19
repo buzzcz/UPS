@@ -28,6 +28,57 @@ struct player *create_player(struct sockaddr_in client_addr, socklen_t client_ad
 }
 
 /*
+ * Checks if the nickname is already used in a game
+ *
+ * games: list of games
+ * name: name to be checked
+ *
+ * return: 0 if it was found, 1 otherwise
+ * */
+int is_already_logged(struct game **games, char *name) {
+	struct game *iter;
+
+	iter = *games;
+	while (iter != NULL) {
+		int i;
+
+		for (i = 0; i < iter->players_count; i++) {
+			if (iter->players[i] != NULL && strcmp(iter->players[i]->name, name) == 0) {
+				return 0;
+			}
+		}
+		iter = iter->next;
+	}
+	return 1;
+}
+
+/*
+ * Finds a player in a game
+ *
+ * games: list of games
+ * client_addr: adress which identifies the player
+ *
+ * return: player who was found, NULL otherwise
+ * */
+struct player *find_player(struct game **games, struct sockaddr_in client_addr) {
+	struct game *iter;
+
+	iter = *games;
+	while (iter != NULL) {
+		int i;
+
+		for (i = 0; i < iter->players_count; i++) {
+//			TODO compare client address in if-clause
+			if (iter->players[i] != NULL) {
+				return iter->players[i];
+			}
+		}
+		iter = iter->next;
+	}
+	return NULL;
+}
+
+/*
  * Removes player from a game
  *
  * games: list of games
@@ -61,14 +112,18 @@ void remove_player(struct game **games, char *name) {
  * players_count: number of players supposed to be in the game
  * player: player who creates the game is a first player in it
  * */
-void add_game(struct game **games, int players_count, struct player *player) {
+void create_game(struct game **games, int players_count, struct player *player) {
 	struct game *iter, *new;
+	int i;
 
 	iter = *games;
 	new = malloc(sizeof(struct game));
 	new->state = 0;
 	new->players_count = players_count;
 	new->players[0] = player;
+	for (i = 1; i < players_count; i++) {
+		new->players[i] = NULL;
+	}
 	new->next = NULL;
 	if (iter != NULL) {
 		while (iter->next != NULL) {
@@ -80,6 +135,35 @@ void add_game(struct game **games, int players_count, struct player *player) {
 		new->id = 0;
 		iter = new;
 	}
+}
+
+/*
+ * Finds suitable game for a player or creates a new one
+ *
+ * games: list of games
+ * player: player to be added to a game
+ * */
+void add_player_to_game(struct game **games, struct player *player) {
+	struct game *iter;
+
+	iter = *games;
+	while (iter != NULL) {
+		if (iter->players_count == player->opponents + 1 && iter->state == 0) {
+			int i, occupied;
+
+			occupied = 0;
+			for (i = 0; i < iter->players_count; i++) {
+				if (iter->players[i] == NULL) iter->players[i] = player;
+				occupied++;
+			}
+			if (occupied == iter->players_count) {
+//				TODO start the game
+			}
+			break;
+		}
+		iter = iter->next;
+	}
+	create_game(games, player->opponents + 1, player);
 }
 
 /*
