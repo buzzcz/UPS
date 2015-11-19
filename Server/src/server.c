@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include "server.h"
 #include "communication.h"
+#include "game.h"
 
 /*
  * Creates new server socket and sets server attributes
@@ -51,8 +52,10 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
  * */
 void run_server(int server_socket) {
 	int sent_datagrams = 1;
+	struct game *games;
+
+	games = NULL;
 	while (1) {
-		int client_socket = 0;
 		socklen_t client_addr_length;
 		struct sockaddr_in client_addr;
 		struct message received;
@@ -61,8 +64,6 @@ void run_server(int server_socket) {
 		received = receive_message(server_socket, &client_addr, &client_addr_length);
 		printf("Client sent: %s", received.data);
 		respond(server_socket, client_addr, client_addr_length, &sent_datagrams, received);
-
-		close(client_socket);
 
 //		TODO remove
 		if (sent_datagrams < 0) {
