@@ -147,8 +147,6 @@ int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_
 	sendAck(server_socket, client_addr, client_addr_length, sent_datagrams, received);
 
 	switch (received.type) {
-		case 1:
-			break;
 		case 2:
 			break;
 		case 3:

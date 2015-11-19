@@ -25,7 +25,6 @@ struct message {
 };
 
 struct message receive_message(int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length);
-
 int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length, int *sent_datagrams,
             struct message received);
 
