@@ -19,13 +19,13 @@ struct message {
 	/*Type of data in datagram*/
 	int type;
 	/*Size of data in datagram*/
-	int size;
+	int data_size;
 	/*Data in datagram*/
 	char *data;
 };
 
 struct message receive_message(int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length);
-int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length, int *sent_datagrams,
-            struct message received);
+int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length, struct message received,
+            struct game **games);
 
 #endif
