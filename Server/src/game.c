@@ -1,12 +1,16 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "game.h"
 
 /*
  * Creates new player
  *
+ *
  * opponents: number of opponents player wants to play
+ *
  * name: nickname of the player
+ *
  *
  * return: new player
  * */
@@ -16,13 +20,14 @@ struct player *create_player(struct sockaddr_in client_addr, socklen_t client_ad
 	p = malloc(sizeof(struct player));
 	p->client_addr = client_addr;
 	p->client_addr_length = client_addr_length;
-	p->sent_datagrams = 0;
-	p->received_datagrams = 0;
+	p->sent_datagrams = 1;
+	p->received_datagrams = 1;
 	p->opponents = opponents;
 	p->game = -1;
 	p->wrong_guesses = 0;
 	p->name = malloc(strlen(name));
 	strcpy(p->name, name);
+	p->last_message = NULL;
 
 	return p;
 }
@@ -30,8 +35,11 @@ struct player *create_player(struct sockaddr_in client_addr, socklen_t client_ad
 /*
  * Checks if the nickname is already used in a game
  *
+ *
  * games: list of games
+ *
  * name: name to be checked
+ *
  *
  * return: 0 if it was found, 1 otherwise
  * */
@@ -55,8 +63,11 @@ int is_already_logged(struct game **games, char *name) {
 /*
  * Finds a player in a game
  *
+ *
  * games: list of games
+ *
  * client_addr: adress which identifies the player
+ *
  *
  * return: player who was found, NULL otherwise
  * */
@@ -81,7 +92,9 @@ struct player *find_player(struct game **games, struct sockaddr_in client_addr) 
 /*
  * Removes player from a game
  *
+ *
  * games: list of games
+ *
  * player: player to be removed
  * */
 void remove_player(struct game **games, char *name) {
@@ -108,8 +121,11 @@ void remove_player(struct game **games, char *name) {
 /*
  * Creates new game and adds it to the list of games
  *
+ *
  * games: list of games
+ *
  * players_count: number of players supposed to be in the game
+ *
  * player: player who creates the game is a first player in it
  * */
 void create_game(struct game **games, int players_count, struct player *player) {
@@ -140,7 +156,9 @@ void create_game(struct game **games, int players_count, struct player *player) 
 /*
  * Finds suitable game for a player or creates a new one
  *
+ *
  * games: list of games
+ *
  * player: player to be added to a game
  * */
 void add_player_to_game(struct game **games, struct player *player) {
@@ -167,9 +185,35 @@ void add_player_to_game(struct game **games, struct player *player) {
 }
 
 /*
- * Removes game from the list of games
+ * Finds a game according to the given id
+ *
  *
  * games: list of games
+ *
+ * id: id of a game that should be found
+ *
+ *
+ * return: Game that has been found, NULL otherwise
+ * */
+struct game *find_game(struct game **games, int id) {
+	struct game *iter;
+
+	iter = *games;
+	while (iter != NULL) {
+		if (iter->id == id) {
+			return iter;
+		}
+		iter = iter->next;
+	}
+	return NULL;
+}
+
+/*
+ * Removes game from the list of games
+ *
+ *
+ * games: list of games
+ *
  * id: id of the game to be removed
  * */
 void remove_game(struct game **games, int id) {
