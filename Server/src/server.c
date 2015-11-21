@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include "server.h"
 #include "communication.h"
 #include "game.h"
@@ -54,7 +53,7 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
 /*
  * Method that runs the server's endless loop
  *
- * 
+ *
  * server_socket: socket to be used for receiving and sending messages
  * */
 void run_server(int server_socket) {
