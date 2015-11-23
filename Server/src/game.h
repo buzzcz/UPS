@@ -45,12 +45,12 @@ struct game {
 	int players_count;
 	/*Next game in a list*/
 	struct game *next;
-	/*Field of players in a game*/
-	struct player *players[];
 	/*Word that is being guessed*/
 	char *guessed_word;
 	/*Guessed letters*/
 	char *guessed_letters;
+	/*Field of players in a game*/
+	struct player *players[];
 };
 
 struct player *create_player(struct sockaddr_in client_addr, socklen_t client_addr_length, int opponents, char *name);
