@@ -15,21 +15,32 @@
  * return: new player
  * */
 struct player *create_player(struct sockaddr_in client_addr, socklen_t client_addr_length, int opponents, char *name) {
-	struct player *p;
+	struct player *new;
 
-	p = malloc(sizeof(struct player));
-	p->client_addr = client_addr;
-	p->client_addr_length = client_addr_length;
-	p->sent_datagrams = 1;
-	p->received_datagrams = 1;
-	p->opponents = opponents;
-	p->game = -1;
-	p->wrong_guesses = 0;
-	p->name = malloc(strlen(name));
-	strcpy(p->name, name);
-	p->last_message = NULL;
+	new = malloc(sizeof(struct player));
+	new->client_addr = client_addr;
+	new->client_addr_length = client_addr_length;
+	new->sent_datagrams = 1;
+	new->received_datagrams = 1;
+	new->opponents = opponents;
+	new->game = -1;
+	new->wrong_guesses = 0;
+	new->name = malloc(strlen(name));
+	strcpy(new->name, name);
+	new->last_message = NULL;
 
-	return p;
+	return new;
+}
+
+/*
+ * Frees memory used by a player
+ *
+ *
+ * player: player to be freed
+ * */
+void free_player(struct player *player) {
+	free(player->name);
+	free(player);
 }
 
 /*
@@ -90,35 +101,6 @@ struct player *find_player(struct game **games, struct sockaddr_in client_addr) 
 }
 
 /*
- * Removes player from a game
- *
- *
- * games: list of games
- *
- * player: player to be removed
- * */
-void remove_player(struct game **games, char *name) {
-	struct game *iter;
-
-	iter = *games;
-	while (iter != NULL) {
-		int i;
-
-		for (i = 0; i < iter->players_count; i++) {
-			if (strcmp(iter->players[i]->name, name) == 0) {
-				free(iter->players[i]->name);
-				free(iter->players[i]);
-				iter->players[i] = NULL;
-				iter->players_count--;
-//				TODO if count < 2
-				break;
-			}
-		}
-		iter = iter->next;
-	}
-}
-
-/*
  * Creates new game and adds it to the list of games
  *
  *
@@ -176,8 +158,9 @@ void add_player_to_game(struct game **games, struct player *player) {
 			}
 			if (occupied == iter->players_count) {
 //				TODO start the game
+				iter->state = 1;
 			}
-			break;
+			return;
 		}
 		iter = iter->next;
 	}
@@ -221,20 +204,58 @@ void remove_game(struct game **games, int id) {
 
 	iter = *games;
 	if (iter != NULL) {
+		int i;
+
 		while (iter->next != NULL) {
 			if (iter->next->id == id) {
 				struct game *del;
 
 				del = iter->next;
 				iter->next = del->next;
+
+				free(del->guessed_word);
+				free(del->guessed_letters);
+				for (i = 0; i < del->players_count; i++) {
+					free_player(del->players[i]);
+				}
 				free(del);
 				break;
 			}
 			iter = iter->next;
 		}
 		if (iter->id == id) {
+			for (i = 0; i < iter->players_count; i++) {
+				free_player(iter->players[i]);
+			}
 			free(iter);
 			iter = NULL;
+		}
+	}
+}
+
+/*
+ * Removes player from a game
+ *
+ *
+ * games: list of games
+ *
+ * player: player to be removed
+ * */
+void remove_player_from_game(struct game **games, struct game *game, struct player *player) {
+	if (game != NULL) {
+		int i;
+
+		for (i = 0; i < game->players_count; i++) {
+			if (strcmp(game->players[i]->name, player->name) == 0) {
+				free_player(game->players[i]);
+				game->players[i] = NULL;
+				game->players_count--;
+//				TODO if count < 2
+				if (game->players_count < 2) {
+					remove_game(games, game->id);
+				}
+				break;
+			}
 		}
 	}
 }
