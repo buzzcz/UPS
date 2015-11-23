@@ -44,6 +44,34 @@ void free_player(struct player *player) {
 }
 
 /*
+ * Checks if the nickname is already used in a game
+ *
+ *
+ * games: list of games
+ *
+ * name: name to be checked
+ *
+ *
+ * return: 0 if it was found, 1 otherwise
+ * */
+int is_already_logged(struct game **games, char *name) {
+	struct game *iter;
+
+	iter = *games;
+	while (iter != NULL) {
+		int i;
+
+		for (i = 0; i < iter->players_count; i++) {
+			if (iter->players[i] != NULL && strcmp(iter->players[i]->name, name) == 0) {
+				return 0;
+			}
+		}
+		iter = iter->next;
+	}
+	return 1;
+}
+
+/*
  * Finds a player in a game
  *
  *
@@ -63,7 +91,8 @@ struct player *find_player(struct game **games, struct sockaddr_in client_addr) 
 
 		for (i = 0; i < iter->players_count; i++) {
 //			TODO compare client address in if-clause
-			if (iter->players[i] != NULL) {
+			if (iter->players[i] != NULL &&
+			    iter->players[i]->client_addr.sin_addr.s_addr == client_addr.sin_addr.s_addr) {
 				return iter->players[i];
 			}
 		}
