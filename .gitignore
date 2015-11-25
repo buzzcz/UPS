@@ -1,3 +1,4 @@
 Client/out
 Client/Client.iml
-*/.idea
+Client/.idea/
+Server/.idea/
