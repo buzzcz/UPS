@@ -1,6 +1,7 @@
+#include <netinet/in.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include "structures.h"
 #include "game.h"
 
 /*
@@ -90,7 +91,6 @@ struct player *find_player(struct game **games, struct sockaddr_in client_addr) 
 		int i;
 
 		for (i = 0; i < iter->players_count; i++) {
-//			TODO compare client address in if-clause
 			if (iter->players[i] != NULL &&
 			    iter->players[i]->client_addr.sin_addr.s_addr == client_addr.sin_addr.s_addr) {
 				return iter->players[i];
@@ -119,6 +119,7 @@ void create_game(struct game **games, int players_count, struct player *player) 
 	new = malloc(sizeof(struct game));
 	new->state = 0;
 	new->players_count = players_count;
+	new->players = malloc(players_count * sizeof(struct player *));
 	new->players[0] = player;
 	for (i = 1; i < players_count; i++) {
 		new->players[i] = NULL;
@@ -129,10 +130,12 @@ void create_game(struct game **games, int players_count, struct player *player) 
 			iter = iter->next;
 		}
 		new->id = iter->id + 1;
+		new->players[0]->game = new->id;
 		iter->next = new;
 	} else {
 		new->id = 0;
-		iter = new;
+		new->players[0]->game = 0;
+		*games = new;
 	}
 }
 
@@ -154,7 +157,10 @@ void add_player_to_game(struct game **games, struct player *player) {
 
 			occupied = 0;
 			for (i = 0; i < iter->players_count; i++) {
-				if (iter->players[i] == NULL) iter->players[i] = player;
+				if (iter->players[i] == NULL) {
+					player->game = iter->id;
+					iter->players[i] = player;
+				}
 				occupied++;
 			}
 			if (occupied == iter->players_count) {
@@ -217,8 +223,9 @@ void remove_game(struct game **games, int id) {
 				free(del->guessed_word);
 				free(del->guessed_letters);
 				for (i = 0; i < del->players_count; i++) {
-					free_player(del->players[i]);
+					if (del->players[i] != NULL) free_player(del->players[i]);
 				}
+				free(del->players);
 				free(del);
 				break;
 			}
@@ -226,7 +233,7 @@ void remove_game(struct game **games, int id) {
 		}
 		if (iter->id == id) {
 			for (i = 0; i < iter->players_count; i++) {
-				free_player(iter->players[i]);
+				if (iter->players[i] != NULL) free_player(iter->players[i]);
 			}
 			free(iter);
 			iter = NULL;

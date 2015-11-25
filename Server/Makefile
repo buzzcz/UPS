@@ -1,8 +1,8 @@
 CC = gcc
 BIN = server
-OBJ = server.o
+OBJ = src/main.o src/server.o src/communication.o src/game.o
 
-%.o:	clean %.c
+%.o:	%.c
 	$(CC) -c $< -o $@
 
 $(BIN): $(OBJ)

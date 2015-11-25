@@ -3,9 +3,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "server.h"
+#include "structures.h"
 #include "communication.h"
 #include "game.h"
+#include "server.h"
 
 /*
  * Creates new server socket and sets server attributes
@@ -68,7 +69,9 @@ void run_server(int server_socket) {
 
 		printf("Server is waiting for data\n");
 		received = receive_message(server_socket, &client_addr, &client_addr_length);
-		printf("Client sent: %s\n", received.data);
+		if (received.type != -1) {
+			printf("Client sent: %s\n", received.data);
+		}
 		respond(server_socket, client_addr, client_addr_length, received, &games);
 
 //		TODO remove
