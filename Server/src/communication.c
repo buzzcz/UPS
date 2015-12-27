@@ -151,7 +151,7 @@ struct message create_ack(int *sent_datagrams, struct message received) {
 	ack.data_size = number_length(received.number);
 	ack.data = malloc((size_t) ack.data_size);
 	sprintf(ack.data, "%d", received.number);
-	ack.checksum = ack.number + ack.type + ack.data_size; // TODO modulo 2^8
+	ack.checksum = (ack.number + ack.type + ack.data_size) % 256; // modulo 2^8
 	for (i = 0; i < ack.data_size; i++) {
 		ack.checksum += ack.data[i];
 	}

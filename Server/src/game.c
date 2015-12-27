@@ -1,6 +1,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "structures.h"
 #include "game.h"
 
@@ -102,6 +103,33 @@ struct player *find_player(struct game **games, struct sockaddr_in client_addr) 
 }
 
 /*
+ * Gets random word from the dictionary file
+ * */
+char *get_word() {
+	FILE *words;
+	char *word;
+	int ch, lines, i;
+
+	words = fopen("words.txt", "r");
+	lines = 0;
+	ch = fgetc(words);
+	while (ch != EOF) {
+		if (ch == '\n') lines++;
+		ch = fgetc(words);
+	}
+
+	ch = rand() % lines;
+	rewind(words);
+	for (i = 0; i < ch; i++) {
+		getline(NULL, NULL, words);
+	}
+	getline(&word, NULL, words);
+
+	fclose(words);
+	return word;
+}
+
+/*
  * Creates new game and adds it to the list of games
  *
  *
@@ -131,6 +159,7 @@ void create_game(struct game **games, int players_count, struct player *player) 
 		}
 		new->id = iter->id + 1;
 		new->players[0]->game = new->id;
+		new->guessed_word = get_word();
 		iter->next = new;
 	} else {
 		new->id = 0;
@@ -153,17 +182,16 @@ void add_player_to_game(struct game **games, struct player *player) {
 	iter = *games;
 	while (iter != NULL) {
 		if (iter->players_count == player->opponents + 1 && iter->state == 0) {
-			int i, occupied;
+			int i;
 
-			occupied = 0;
 			for (i = 0; i < iter->players_count; i++) {
 				if (iter->players[i] == NULL) {
 					player->game = iter->id;
 					iter->players[i] = player;
+					break;
 				}
-				occupied++;
 			}
-			if (occupied == iter->players_count) {
+			if (i == iter->players_count) {
 //				TODO start the game
 				iter->state = 1;
 			}
@@ -258,7 +286,6 @@ void remove_player_from_game(struct game **games, struct game *game, struct play
 				free_player(game->players[i]);
 				game->players[i] = NULL;
 				game->players_count--;
-//				TODO if count < 2
 				if (game->players_count < 2) {
 					remove_game(games, game->id);
 				}

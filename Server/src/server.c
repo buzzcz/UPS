@@ -3,10 +3,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include "structures.h"
 #include "communication.h"
 #include "game.h"
 #include "server.h"
+
+static volatile int run = 1;
 
 /*
  * Creates new server socket and sets server attributes
@@ -51,6 +54,10 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
 	}
 }
 
+void int_handler(int signal) {
+	run = 0;
+}
+
 /*
  * Method that runs the server's endless loop
  *
@@ -61,8 +68,11 @@ void run_server(int server_socket) {
 	int sent_datagrams = 1;
 	struct game *games;
 
+	signal(SIGINT, int_handler);
+
 	games = NULL;
-	while (1) {
+//	TODO proper exit after Ctrl + C
+	while (run) {
 		socklen_t client_addr_length;
 		struct sockaddr_in client_addr;
 		struct message received;
@@ -79,4 +89,5 @@ void run_server(int server_socket) {
 			break;
 		}
 	}
+	printf("Ending...");
 }

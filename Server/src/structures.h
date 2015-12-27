@@ -61,7 +61,7 @@ struct game {
 	/*Word that is being guessed*/
 	char *guessed_word;
 	/*Guessed letters*/
-	char *guessed_letters;
+	char guessed_letters[28];
 	/*Field of players in a game*/
 	struct player **players;
 };
