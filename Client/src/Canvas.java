@@ -17,31 +17,31 @@ public class Canvas extends JPanel {
 	/**
 	 * Number of wrong guessed letters
 	 */
-	private int missedLetters;
+	private int wrongGuesses;
 
 	public Canvas() {
 
 	}
 
-	public Canvas(int missedLetters) {
-		this.missedLetters = missedLetters;
+	public Canvas(int wrongGuesses) {
+		this.wrongGuesses = wrongGuesses;
 	}
 
-	public void setMissedLetters(int missedLetters) {
-		this.missedLetters = missedLetters;
+	public void setWrongGuesses(int wrongGuesses) {
+		this.wrongGuesses = wrongGuesses;
 	}
 
 	public void paint(Graphics g1) {
 		g = (Graphics2D) g1;
-		draw(missedLetters);
+		draw(wrongGuesses);
 	}
 
 	/**
 	 * Redraws a hangman according to a number of wrong guessed letters
 	 */
-	public void draw(int missedLetters) {
+	public void draw(int wrongGuesses) {
 		g.clearRect(0, 0, getWidth(), getHeight());
-		switch (missedLetters) {
+		switch (wrongGuesses) {
 			case 1:
 				drawFirst();
 				break;

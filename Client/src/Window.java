@@ -12,6 +12,10 @@ public class Window extends JFrame {
 	private Connection udp;
 	private String host;
 	private int port;
+	/**
+	 * Thread that will receive messages
+	 * */
+	private Receiver receiver;
 
 	/**
 	 * Canvas for painting the hangman
@@ -21,11 +25,6 @@ public class Window extends JFrame {
 	 * Headline label
 	 */
 	private JLabel statusLabel;
-
-	/**
-	 * Number of wrong guessed letters
-	 */
-	private int missedLetters;
 
 	/******************************************************************************************************************/
 
@@ -40,8 +39,9 @@ public class Window extends JFrame {
 		this.host = host;
 		this.port = port;
 		udp = new Connection(host, port);
+		receiver = new Receiver(udp);
 
-		canvas.setMissedLetters(11);
+		canvas.setWrongGuesses(11);
 		canvas.repaint();
 	}
 
@@ -145,23 +145,14 @@ public class Window extends JFrame {
 		addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyReleased(KeyEvent e) {
-				if ((e.getKeyChar() > 'a' && e.getKeyChar() < 'z') || e.getKeyChar() == '\'' || e.getKeyChar() ==
+				if ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e.getKeyChar() == '\'' || e.getKeyChar() ==
 						' ') {
 					String data = e.getKeyChar() + "";
 					udp.sendMessage(new Message(udp.getNumberOfSentDatagrams() + ";17;" + data.length() + ";" + data
 							.toUpperCase()));
-					System.out.println(udp.receiveMessage().getMessage());
+					System.out.println("Sent " + data);
 				}
 			}
 		});
-	}
-
-	/**
-	 * Getter for number of wrong guessed letters
-	 *
-	 * @return number of wrong guessed letters
-	 */
-	public int getMissedLetters() {
-		return missedLetters;
 	}
 }

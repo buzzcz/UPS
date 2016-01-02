@@ -24,6 +24,10 @@ public class Connection {
 	 * Number of sent datagrams
 	 */
 	private int numberOfSentDatagrams;
+	/**
+	 * Number of received datagrams
+	 */
+	private int numberOfReceivedDatagrams;
 
 	/******************************************************************************************************************/
 
@@ -80,17 +84,13 @@ public class Connection {
 	 *
 	 * @return received message
 	 */
-	public Message receiveMessage() {
+	public Message receiveMessage() throws IOException {
 //		TODO buffer size??
 		byte[] buffer = new byte[256];
 		DatagramPacket receive = new DatagramPacket(buffer, buffer.length);
-		try {
-			socket.receive(receive);
-			return new Message(new String(buffer));
-		} catch (IOException e) {
-			System.out.println(e.getMessage());
-			return null;
-		}
+		socket.receive(receive);
+		numberOfReceivedDatagrams++;
+		return new Message(new String(buffer));
 	}
 
 	/**
@@ -100,5 +100,14 @@ public class Connection {
 	 */
 	public int getNumberOfSentDatagrams() {
 		return numberOfSentDatagrams;
+	}
+
+	/**
+	 * Getter for number of sent datagrams
+	 *
+	 * @return number of received datagrams
+	 */
+	public int getNumberOfReceivedDatagrams() {
+		return numberOfReceivedDatagrams;
 	}
 }
