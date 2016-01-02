@@ -148,8 +148,7 @@ public class Window extends JFrame {
 				if ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e.getKeyChar() == '\'' || e.getKeyChar() ==
 						' ') {
 					String data = e.getKeyChar() + "";
-					udp.sendMessage(new Message(udp.getNumberOfSentDatagrams() + ";17;" + data.length() + ";" + data
-							.toUpperCase()));
+					udp.sendMessage(new Message(udp.getNumberOfSentDatagrams(), 17,data.length(), data.toUpperCase()));
 					System.out.println("Sent " + data);
 				}
 			}

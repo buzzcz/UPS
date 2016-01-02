@@ -79,6 +79,11 @@ public class Connection {
 		}
 	}
 
+	private int[] peekMessage() {
+//		TODO peek message and return bytes to read and message size
+		return null;
+	}
+
 	/**
 	 * Receives a datagram with a message
 	 *
@@ -90,7 +95,21 @@ public class Connection {
 		DatagramPacket receive = new DatagramPacket(buffer, buffer.length);
 		socket.receive(receive);
 		numberOfReceivedDatagrams++;
-		return new Message(new String(buffer));
+
+		String s = new String(buffer);
+		int number, type, checksum, dataSize;
+		String data;
+
+		number = Integer.parseInt(s.substring(0, s.indexOf(';')));
+		s = s.substring(s.indexOf(';') + 1);
+		type = Integer.parseInt(s.substring(0, s.indexOf(';')));
+		s = s.substring(s.indexOf(';') + 1);
+		checksum = Integer.parseInt(s.substring(0, s.indexOf(';')));
+		s = s.substring(s.indexOf(';') + 1);
+		dataSize = Integer.parseInt(s.substring(0, s.indexOf(';')));
+		data = s;
+
+		return new Message(number, type, checksum, dataSize, data);
 	}
 
 	/**
