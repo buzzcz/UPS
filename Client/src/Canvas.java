@@ -29,6 +29,7 @@ public class Canvas extends JPanel {
 
 	public void setWrongGuesses(int wrongGuesses) {
 		this.wrongGuesses = wrongGuesses;
+		repaint();
 	}
 
 	public void paint(Graphics g1) {

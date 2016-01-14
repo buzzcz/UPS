@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.awt.*;
 
 /**
@@ -6,13 +7,17 @@ import java.awt.*;
 public class Main {
 
 	public static void main(final String[] args) {
-
-		EventQueue.invokeLater(new Runnable() {
-			@Override
-			public void run() {
-				Window window = new Window(args[0], Integer.parseInt(args[1]));
-				window.setVisible(true);
-			}
-		});
+		try {
+			EventQueue.invokeLater(new Runnable() {
+				@Override
+				public void run() {
+					Window window = new Window(args[0], Integer.parseInt(args[1]));
+					window.setVisible(true);
+				}
+			});
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(null, e.getMessage(), e.getClass().getSimpleName(), JOptionPane
+					.ERROR_MESSAGE);
+		}
 	}
 }
