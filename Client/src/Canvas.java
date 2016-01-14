@@ -20,15 +20,15 @@ public class Canvas extends JPanel {
 	private int wrongGuesses;
 
 	public Canvas() {
-
+		wrongGuesses = 0;
 	}
 
 	public Canvas(int wrongGuesses) {
 		this.wrongGuesses = wrongGuesses;
 	}
 
-	public void setWrongGuesses(int wrongGuesses) {
-		this.wrongGuesses = wrongGuesses;
+	public void wrongGuess() {
+		wrongGuesses++;
 		repaint();
 	}
 
@@ -75,6 +75,8 @@ public class Canvas extends JPanel {
 				break;
 			case 11:
 				drawEleventh();
+				break;
+			default:
 				break;
 		}
 	}

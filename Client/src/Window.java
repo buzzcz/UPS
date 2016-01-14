@@ -66,9 +66,6 @@ public class Window extends JFrame {
 		game = null;
 		nick = null;
 		opponents = 0;
-
-		canvas.setWrongGuesses(11);
-		canvas.repaint();
 	}
 
 	/**
@@ -314,6 +311,15 @@ public class Window extends JFrame {
 	 */
 	public String getGuessedWordLabelText() {
 		return guessedWordLabel.getText();
+	}
+
+	/**
+	 * Getter for canvas
+	 *
+	 * @return canvas
+	 */
+	public Canvas getCanvas() {
+		return canvas;
 	}
 
 	/**

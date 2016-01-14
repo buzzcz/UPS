@@ -16,9 +16,6 @@
  * client_addr: saves the client's attributes
  *
  * client_addr_length: length of client's attributes
- *
- *
- * return: size of the received data
  * */
 void peek_message(int *to_read, int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length) {
 	char *text, *tmp;
@@ -151,10 +148,11 @@ struct message create_ack(int *sent_datagrams, struct message received) {
 	ack.data_size = number_length(received.number);
 	ack.data = malloc((size_t) ack.data_size);
 	sprintf(ack.data, "%d", received.number);
-	ack.checksum = (ack.number + ack.type + ack.data_size) % 256; // modulo 2^8
+	ack.checksum = ack.number + ack.type + ack.data_size; // modulo 2^8
 	for (i = 0; i < ack.data_size; i++) {
 		ack.checksum += ack.data[i];
 	}
+	ack.checksum = ack.checksum % 256;
 
 	return ack;
 }
@@ -391,23 +389,22 @@ void respond_type_10(int server_socket, struct game **games, struct player *play
 void respond_type_18(int server_socket, struct game **games, struct player *player, struct message received) {
 	struct message message;
 	struct game *game;
+	char *reply;
 	int i;
 
 	game = find_game(games, player->game);
 
 	message.number = player->sent_datagrams++;
 	message.type = 19;
-	message.data_size = (int) (strlen(game->guessed_word) * 2);
-	message.data = malloc((size_t) message.data_size);
-//	TODO fill data with 0,1,...1 if letter on that position is guessed well, 0 if not
+	message.data_size = (int) strlen(game->guessed_word);
+	reply = check_guess(game, received, (size_t) message.data_size);
+	message.data = reply;
 	send_message(server_socket, player, message);
 
-	free(message.data);
-
 	message.type = 20;
-	message.data_size = (int) strlen(player->name) + 2;
+	message.data_size = (int) strlen(player->name) + message.data_size + 1;
 	message.data = malloc((size_t) message.data_size);
-	sprintf(message.data, "%s,%c", player->name, received.data[0]);
+	sprintf(message.data, "%s,%c,%s", player->name, received.data[0], reply);
 
 	for (i = 0; i < game->players_count; i++) {
 		if (strcmp(game->players[i]->name, player->name) != 0) {
@@ -416,6 +413,7 @@ void respond_type_18(int server_socket, struct game **games, struct player *play
 		}
 	}
 
+	free(reply);
 	free(message.data);
 }
 
@@ -469,7 +467,8 @@ void respond_type_21(int server_socket, struct game **games, struct player *play
  * games: list of games
  *
  *
- * return: 0 if a response has been sent, 1 if a response has been sent and another message should come from a client and -1 otherwise
+ * return: 0 if a response has been sent, 1 if a response has been sent and another message should come from a client
+ * and -1 otherwise
  * */
 int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length, struct message received,
             struct game **games) {
@@ -477,24 +476,22 @@ int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_
 	struct player *player;
 
 	player = find_player(games, client_addr);
-//		TODO check the correct order of datagrams
+//		TODO check the correct order of datagrams, check checksum
 
 	switch (received.type) {
-		case 2:
-			break;
-		case 3:
+		case 3:	// Invalid data
 			player->received_datagrams++;
 			send_ack(server_socket, received, player);
 
 			fprintf(stderr, "Unknown message format\n");
 			break;
-		case 4:
+		case 4:	// Resend last message
 			player->received_datagrams++;
 			send_ack(server_socket, received, player);
 
 			respond_type_4(server_socket, player);
 			break;
-		case 5:
+		case 5:	// Connect request
 			if (player != NULL) {
 				player->received_datagrams++;
 				send_ack(server_socket, received, player);
@@ -502,7 +499,7 @@ int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_
 
 			respond_type_5(server_socket, client_addr, client_addr_length, games, player, received);
 			break;
-		case 7:
+		case 7:	// Reconnect request
 			if (player != NULL) {
 				player->received_datagrams++;
 				send_ack(server_socket, received, player);
@@ -510,19 +507,19 @@ int respond(int server_socket, struct sockaddr_in client_addr, socklen_t client_
 
 			respond_type_7(server_socket, games, player);
 			break;
-		case 10:
+		case 10:	// Disconnecting
 			player->received_datagrams++;
 			send_ack(server_socket, received, player);
 
 			respond_type_10(server_socket, games, player);
 			break;
-		case 18:
+		case 18:	// Move
 			player->received_datagrams++;
 			send_ack(server_socket, received, player);
 
 			respond_type_18(server_socket, games, player, received);
 			break;
-		case 21:
+		case 21:	// Guessing the word
 			player->received_datagrams++;
 			send_ack(server_socket, received, player);
 

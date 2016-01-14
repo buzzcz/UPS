@@ -165,4 +165,11 @@ public class Game {
 	public void setMyMove(boolean myMove) {
 		this.myMove = myMove;
 	}
+
+	/**
+	 * Adds wrong guess to the current ones
+	 */
+	public void wrongGuess() {
+		wrongGuesses++;
+	}
 }

@@ -9,8 +9,6 @@
 #include "game.h"
 #include "server.h"
 
-static volatile int run = 1;
-
 /*
  * Creates new server socket and sets server attributes
  *
@@ -28,8 +26,8 @@ struct sockaddr_in create_server_socket(int *server_socket) {
 	memset(&server_addr, 0, sizeof(struct sockaddr_in));
 
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-//	server_addr.sin_addr.s_addr = htons(INADDR_ANY);
+//	server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	server_addr.sin_addr.s_addr = htons(INADDR_ANY);
 	server_addr.sin_port = htons(10000);
 
 	return server_addr;
@@ -55,7 +53,8 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
 }
 
 void int_handler(int signal) {
-	run = 0;
+	printf("Exiting...");
+	exit(0);
 }
 
 /*
@@ -71,8 +70,8 @@ void run_server(int server_socket) {
 	signal(SIGINT, int_handler);
 
 	games = NULL;
-//	TODO proper exit after Ctrl + C
-	while (run) {
+//	TODO proper exit after Ctrl + C - frees and so on
+	while (1) {
 		socklen_t client_addr_length;
 		struct sockaddr_in client_addr;
 		struct message received;
@@ -89,5 +88,4 @@ void run_server(int server_socket) {
 			break;
 		}
 	}
-	printf("Ending...");
 }

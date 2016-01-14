@@ -104,6 +104,9 @@ struct player *find_player(struct game **games, struct sockaddr_in client_addr) 
 
 /*
  * Gets random word from the dictionary file
+ *
+ *
+ * return: random word from the dictionary file
  * */
 char *get_word() {
 	FILE *words;
@@ -127,6 +130,36 @@ char *get_word() {
 
 	fclose(words);
 	return word;
+}
+
+/*
+ * Checks where the guessed word contains the guessed letter
+ *
+ *
+ * game: game in which the player is
+ *
+ * received: received message
+ *
+ * data_size: size of data - length of the guessed word
+ *
+ *
+ * return: string with 0 on positions where the letters aren't the same and 1 where they are
+ * */
+char *check_guess(struct game *game, struct message received, size_t data_size) {
+	char *checked, guess;
+	int i;
+
+	strtok(received.data, ",");
+	guess = strtok(NULL, ",")[0];
+
+	checked = malloc(data_size + 1);
+	checked[data_size] = '\0';
+	for (i = 0; i < data_size; i++) {
+		if (game->guessed_word[i] == guess) checked[i] = 1;
+		else checked[i] = 0;
+	}
+
+	return checked;
 }
 
 /*
@@ -249,7 +282,6 @@ void remove_game(struct game **games, int id) {
 				iter->next = del->next;
 
 				free(del->guessed_word);
-				free(del->guessed_letters);
 				for (i = 0; i < del->players_count; i++) {
 					if (del->players[i] != NULL) free_player(del->players[i]);
 				}

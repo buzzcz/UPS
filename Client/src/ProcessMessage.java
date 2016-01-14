@@ -176,10 +176,18 @@ public class ProcessMessage extends Thread {
 	}
 
 	private void respondType19(Message received) {
+		boolean hit = false;
 		String word = window.getGuessedWordLabelText(), newWord = "";
 		for (int i = 0; i < received.getData().length(); i++) {
-			if (received.getData().charAt(i) == '1') newWord += window.getLastGuessed();
+			if (received.getData().charAt(i) == '1') {
+				newWord += window.getLastGuessed();
+				hit = true;
+			}
 			else newWord += word.charAt(i);
+		}
+		if (!hit) {
+			window.getGame().wrongGuess();
+			window.getCanvas().wrongGuess();
 		}
 		window.setGuessedWordLabelText(newWord);
 	}
