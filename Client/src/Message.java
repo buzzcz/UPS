@@ -68,7 +68,7 @@ public class Message {
 	 * @return message
 	 */
 	public String getMessage() {
-		return number + "+" + type + "+" + dataSize + ";" + checksum + ";" + data;
+		return number + ";" + type + ";" + checksum + ";" + dataSize + ";" + data;
 	}
 
 	/**
@@ -77,7 +77,7 @@ public class Message {
 	 * @return message bytes
 	 */
 	public byte[] getMessageByte() {
-		return (number + "+" + type + "+" + dataSize + ";" + checksum + ";" + data).getBytes();
+		return getMessage().getBytes();
 	}
 
 	/**
@@ -91,5 +91,50 @@ public class Message {
 		checksum %= 256;
 
 		return checksum == this.checksum;
+	}
+
+	/**
+	 * Getter for a number of message
+	 *
+	 * @return number of message
+	 */
+	public int getNumber() {
+		return number;
+	}
+
+	/**
+	 * Getter for a type of message
+	 *
+	 * @return type of message
+	 */
+	public int getType() {
+		return type;
+	}
+
+	/**
+	 * Getter for a message checksum
+	 *
+	 * @return message checksum
+	 */
+	public int getChecksum() {
+		return checksum;
+	}
+
+	/**
+	 * Getter for a size of data in message
+	 *
+	 * @return size of data in message
+	 */
+	public int getDataSize() {
+		return dataSize;
+	}
+
+	/**
+	 * Getter far data in message
+	 *
+	 * @return data in message
+	 */
+	public String getData() {
+		return data;
 	}
 }
