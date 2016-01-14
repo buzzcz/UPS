@@ -21,6 +21,18 @@ public class Game {
 	 * Guessed letters
 	 */
 	private String guessedLetters;
+	/**
+	 * Number of wrong guesses
+	 */
+	private int wrongGuesses;
+	/**
+	 * If true then it's my move otherwise it's not
+	 */
+	private boolean myMove;
+	/**
+	 * Last sent message
+	 * */
+	private Message lastMessage;
 
 	/******************************************************************************************************************/
 
@@ -31,7 +43,22 @@ public class Game {
 	 */
 	public Game(int playersCount) {
 		this.playersCount = playersCount;
+		state = 0;
+		guessedLetters = "";
+		myMove = false;
+		lastMessage = null;
 	}
+
+	public Game(int state, int playersCount, int guessedWord, String guessedLetters, int wrongGuesses) {
+		this.state = state;
+		this.playersCount = playersCount;
+		this.guessedWord = guessedWord;
+		this.guessedLetters = guessedLetters;
+		this.wrongGuesses = wrongGuesses;
+		myMove = false;
+		lastMessage = null;
+	}
+
 
 	/**
 	 * Getter for state
@@ -97,6 +124,22 @@ public class Game {
 	}
 
 	/**
+	 * Getter for last sent message
+	 * @return last sent message
+	 */
+	public Message getLastMessage() {
+		return lastMessage;
+	}
+
+	/**
+	 * Setter for last sent message
+	 * @param lastMessage last sent message
+	 */
+	public void setLastMessage(Message lastMessage) {
+		this.lastMessage = lastMessage;
+	}
+
+	/**
 	 * Adds newly guessed letter to already guessed letters
 	 *
 	 * @param guessedLetter newly guessed letter
@@ -105,5 +148,21 @@ public class Game {
 		if (!guessedLetters.contains(guessedLetter + "")) {
 			guessedLetters += guessedLetter;
 		}
+	}
+
+	/**
+	 * Says if it is my move
+	 * @return <code>true</code> if it is my move;<code>false</code> otherwise
+	 */
+	public boolean isMyMove() {
+		return myMove;
+	}
+
+	/**
+	 * Setter for my move
+	 * @param myMove my move
+	 */
+	public void setMyMove(boolean myMove) {
+		this.myMove = myMove;
 	}
 }
