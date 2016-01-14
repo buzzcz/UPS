@@ -1,5 +1,7 @@
+import javax.swing.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.Semaphore;
 
 /**
  * @author Jaroslav Klaus
@@ -14,6 +16,18 @@ public class Receiver extends Thread {
 	 * Buffer for received messages
 	 */
 	private ArrayList<Message> buffer;
+	/**
+	 * Buffer for received acknowledgements
+	 */
+	private ArrayList<Message> acks;
+	/**
+	 * Semaphore indicating that a buffer has a message in it
+	 */
+	private Semaphore m;
+	/**
+	 * Semaphore indicating that new ack has been received
+	 */
+	private Semaphore a;
 
 	/******************************************************************************************************************/
 
@@ -23,6 +37,7 @@ public class Receiver extends Thread {
 	public Receiver(Connection udp) {
 		this.udp = udp;
 		buffer = new ArrayList<Message>();
+		m = new Semaphore(0);
 		this.start();
 	}
 
@@ -33,10 +48,17 @@ public class Receiver extends Thread {
 	public void run() {
 		while (true) {
 			try {
-				Message m = udp.receiveMessage();
-				buffer.add(m);
+				Message received = udp.receiveMessage();
+				if (received.getType() == 2) {
+					acks.add(received);
+					a.release();
+				}
+				else {
+					buffer.add(received);
+					m.release();
+				}
 			} catch (IOException e) {
-				System.out.println("UDP receiver error");
+				JOptionPane.showMessageDialog(null, "UDP receive error", "UDP error", JOptionPane.ERROR_MESSAGE);
 			}
 		}
 	}
@@ -46,10 +68,28 @@ public class Receiver extends Thread {
 	 *
 	 * @return a message from a buffer or null
 	 */
-	synchronized public Message getMessageFromBuffer() {
-		if (buffer.size() > 0) {
+	public Message getMessageFromBuffer() {
+		try {
+			m.acquire();
 			return buffer.remove(0);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			return null;
 		}
-		return null;
+	}
+
+	/**
+	 * Getter for acknowledgement from a buffer
+	 *
+	 * @return acknowledgement from a buffer
+	 */
+	public Message getAckFromBuffer() {
+		try {
+			a.acquire();
+			return acks.remove(0);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 }
