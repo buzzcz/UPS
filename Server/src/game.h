@@ -2,7 +2,8 @@
 #define GAME
 
 struct player *create_player(struct sockaddr_in client_addr, socklen_t client_addr_length, int opponents, char *name);
-struct player *find_player(struct game **games, struct sockaddr_in client_addr);
+
+struct player *find_player(struct game **games, char *nick);
 char *get_word();
 char *check_guess(struct game *game, struct message received, size_t data_size);
 int is_already_logged(struct game **games, char *name);

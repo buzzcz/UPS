@@ -84,7 +84,7 @@ int is_already_logged(struct game **games, char *name) {
  *
  * return: player who was found, NULL otherwise
  * */
-struct player *find_player(struct game **games, struct sockaddr_in client_addr) {
+struct player *find_player(struct game **games, char *nick) {
 	struct game *iter;
 
 	iter = *games;
@@ -93,7 +93,7 @@ struct player *find_player(struct game **games, struct sockaddr_in client_addr) 
 
 		for (i = 0; i < iter->players_count; i++) {
 			if (iter->players[i] != NULL &&
-			    iter->players[i]->client_addr.sin_addr.s_addr == client_addr.sin_addr.s_addr) {
+			    strcmp(nick, iter->players[i]->name) == 0) {
 				return iter->players[i];
 			}
 		}
@@ -318,7 +318,7 @@ void remove_player_from_game(struct game **games, struct game *game, struct play
 				free_player(game->players[i]);
 				game->players[i] = NULL;
 				game->players_count--;
-				if (game->players_count < 2) {
+				if (game->players_count < 1) {
 					remove_game(games, game->id);
 				}
 				break;

@@ -83,9 +83,7 @@ struct thread_data {
 	socklen_t client_addr_length;
 	struct game **games;
 	struct list **buffer;
-	struct list **acks;
-	pthread_mutex_t *b, *a, *sb;
-	pthread_cond_t *b_cond, *a_cond, *sb_cond;
+	struct list **acks;;
 };
 
 #endif

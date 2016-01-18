@@ -2,16 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <pthread.h>
 #include "structures.h"
 #include "communication.h"
 #include "game.h"
 #include "server.h"
 #include "list.h"
 
-struct list *buffer, *acks, *server_buffer;
-pthread_mutex_t b, a, sb;
-pthread_cond_t b_cond, a_cond, sb_cond;
+struct list *buffer, *acks;
 
 /*
  * Creates new server socket and sets server attributes
@@ -61,16 +58,16 @@ void int_handler(int signal) {
 	exit(0);
 }
 
-void init_variables() {
+void init_server(int server_socket) {
+	struct timeval timeout;
+	timeout.tv_sec = 10;
+	timeout.tv_usec = 0;
+
+	if (setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) != 0)
+		fprintf(stderr, "Set timeout error\n");
+
 	buffer = NULL;
 	acks = NULL;
-	server_buffer = NULL;
-	pthread_mutex_init(&b, NULL);
-	pthread_mutex_init(&a, NULL);
-	pthread_mutex_init(&sb, NULL);
-	pthread_cond_init(&b_cond, NULL);
-	pthread_cond_init(&a_cond, NULL);
-	pthread_cond_init(&sb_cond, NULL);
 }
 
 /*
@@ -84,7 +81,7 @@ void run_server(int server_socket) {
 	struct game *games;
 
 	signal(SIGINT, int_handler);
-	init_variables();
+	init_server(server_socket);
 
 	games = NULL;
 
@@ -100,10 +97,8 @@ void run_server(int server_socket) {
 //		TODO which messages to server buffer??
 		if (received.type == 2) {
 			add_message(&acks, received);
-			pthread_cond_broadcast(&a_cond);
 		} else {
 			add_message(&buffer, received);
-			pthread_cond_broadcast(&b_cond);
 		}
 
 //		TODO remove

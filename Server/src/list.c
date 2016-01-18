@@ -23,16 +23,10 @@ void add_message(struct list **l, struct message message) {
 }
 
 struct message *find_and_remove_message(struct list **l, char *player) {
-	struct list *iter = *l, *prev = NULL;
-	while (iter != NULL) {
-		if (strstr(iter->message.data, player) != NULL) {
-			if (prev != NULL) {
-				prev->next = iter->next;
-			}
-			return &(iter->message);
-		}
-		prev = iter;
-		iter = iter->next;
+	if (*l != NULL) {
+		struct message *m = &((*l)->message);
+		*l = (*l)->next;
+		return m;
 	}
 	return NULL;
 }
