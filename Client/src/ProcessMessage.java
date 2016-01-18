@@ -27,6 +27,7 @@ public class ProcessMessage extends Thread {
 				sendInvalidData();
 			} else if (received.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
 				udp.increaseNumberOfReceivedDatagrams();
+//				TODO send ack!!
 
 				switch (received.getType()) {
 					case 3: // Invalid data
@@ -87,17 +88,13 @@ public class ProcessMessage extends Thread {
 	}
 
 	public void checkAck() {
-		boolean ok = false;
-		while (!ok) {
-			Message ack = receiver.getAckFromBuffer();
-			if (ack.getType() == -1 || !ack.checkChecksum()) {
-				sendInvalidData();
-			} else if (ack.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
-				udp.increaseNumberOfReceivedDatagrams();
-				ok = true;
-			} else if (ack.getNumber() > udp.getNumberOfReceivedDatagrams() + 1) {
-				sendInvalidData();
-			}
+		Message ack = receiver.getAckFromBuffer();
+		if (ack.getType() == -1 || !ack.checkChecksum()) {
+			sendInvalidData();
+		} else if (ack.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
+			udp.increaseNumberOfReceivedDatagrams();
+		} else if (ack.getNumber() > udp.getNumberOfReceivedDatagrams() + 1) {
+			sendInvalidData();
 		}
 	}
 

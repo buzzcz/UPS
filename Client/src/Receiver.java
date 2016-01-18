@@ -38,6 +38,7 @@ public class Receiver extends Thread {
 		this.udp = udp;
 		buffer = new ArrayList<Message>();
 		m = new Semaphore(0);
+		a = new Semaphore(0);
 		this.start();
 	}
 
