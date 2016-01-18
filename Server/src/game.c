@@ -29,7 +29,6 @@ struct player *create_player(struct sockaddr_in client_addr, socklen_t client_ad
 	new->wrong_guesses = 0;
 	new->name = malloc(strlen(name));
 	strcpy(new->name, name);
-	new->last_message.data = NULL;
 
 	return new;
 }

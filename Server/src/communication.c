@@ -1,5 +1,4 @@
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,119 +7,6 @@
 #include "game.h"
 #include "communication.h"
 #include "list.h"
-
-/*
- * Peeks at the message and returns the size of the data
- *
- *
- * server_socket: server socket to be used for receiving a message
- *
- * client_addr: saves the client's attributes
- *
- * client_addr_length: length of client's attributes
- * */
-void peek_message(int *to_read, int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length) {
-	char *text, *tmp;
-
-	text = malloc(PEEK_SIZE);
-	*client_addr_length = sizeof(client_addr);
-	recvfrom(server_socket, text, PEEK_SIZE, MSG_PEEK, (struct sockaddr *) client_addr, client_addr_length);
-	*client_addr_length = sizeof(client_addr);
-
-
-	tmp = strtok(text, ";");
-	if (tmp != NULL) to_read[0] = (int) (strlen(tmp) + 1);
-	else {
-		to_read[0] = -1;
-		to_read[1] = -1;
-		return;
-	}
-	tmp = strtok(NULL, ";");
-	if (tmp != NULL) to_read[0] += strlen(tmp) + 1;
-	else {
-		to_read[0] = -1;
-		to_read[1] = -1;
-		return;
-	}
-	strtok(NULL, ";");
-	tmp = strtok(NULL, ";");
-	if (tmp != NULL) to_read[0] += strlen(tmp) + 1;
-	else {
-		to_read[0] = -1;
-		to_read[1] = -1;
-		return;
-	}
-
-	to_read[1] = atoi(tmp);
-	to_read[0] += to_read[1];
-
-	free(text);
-}
-
-/*
- * Receives a message from a client
- *
- *
- * server_socket: server socket to be used for receiving a message
- *
- * client_addr: saves the client's attributes
- *
- * client_addr_length: length of client's attributes
- *
- *
- * return: received message
- * */
-struct message receive_message(int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length) {
-	int read_bytes, *to_read;
-	char *received, *tmp;
-	struct message m;
-
-	to_read = malloc(2 * sizeof(int));
-	peek_message(to_read, server_socket, client_addr, client_addr_length);
-	read_bytes = to_read[0];
-	m.data_size = to_read[1];
-	free(to_read);
-	if (read_bytes == -1) {
-		m.type = -1;
-		return m;
-	}
-
-	received = malloc((size_t) (PEEK_SIZE + m.data_size + 1));
-	*client_addr_length = sizeof(*client_addr);
-	read_bytes = (int) recvfrom(server_socket, received, (size_t) read_bytes, 0, (struct sockaddr *) client_addr,
-	                            client_addr_length);
-	*client_addr_length = sizeof(*client_addr);
-	received[read_bytes] = '\0';
-
-	tmp = strtok(received, ";");
-	m.number = atoi(tmp);
-	tmp = strtok(NULL, ";");
-	m.type = atoi(tmp);
-	tmp = strtok(NULL, ";");
-	m.checksum = atoi(tmp);
-	strtok(NULL, ";");
-	tmp = strtok(NULL, ";");
-	if (tmp != NULL) {
-		char *nick;
-
-		nick = strtok(NULL, ",");
-		if (nick != NULL) {
-			tmp = strtok(NULL, ",");
-			m.data_size -= strlen(nick) + 1;
-			m.nick = malloc(strlen(nick) * sizeof(char));
-			strcpy(m.nick, nick);
-			m.data = malloc(m.data_size * sizeof(char));
-		} else {
-			m.nick = NULL;
-		}
-		strcpy(m.data, tmp);
-	}
-	else m.data = NULL;
-
-	free(received);
-
-	return m;
-}
 
 /*
  * Finds out how many digits are there in a number
@@ -211,26 +97,9 @@ void send_message(int server_socket, struct player *player, struct message m) {
 	printf("Server is sending: %s\n", message);
 	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &(player->client_addr),
 	       player->client_addr_length);
-	player->last_message = m;
+//	TODO add message to sent buffer
 
 	free(message);
-}
-
-void send_invalid_data(int server_socket, struct player *player);
-
-void check_ack(int server_socket, struct player *player, struct list *acks, pthread_mutex_t *a, pthread_cond_t *a1) {
-	struct message *ack;
-
-	while ((ack = find_and_remove_message(&acks, player->name)) == NULL)
-		pthread_cond_wait(a1, a);
-
-		if (ack->type == -1 || check_checksum(ack) != 1) {
-			send_invalid_data(server_socket, player);
-		} else if (ack->number == player->received_datagrams + 1) {
-			player->received_datagrams++;
-		} else if (ack->number > player->received_datagrams + 1) {
-			send_invalid_data(server_socket, player);
-		}
 }
 
 /*
@@ -285,32 +154,6 @@ void send_ack_unknown_player(int server_socket, struct sockaddr_in client_addr, 
 
 	free(ack.data);
 	free(message);
-}
-
-void send_invalid_data(int server_socket, struct player *player) {
-	struct message m;
-
-	m.number = player->sent_datagrams++;
-	m.type = 3;
-	m.data_size = 0;
-	m.data = NULL;
-	calculate_checksum(&m);
-
-	send_message(server_socket, player, m);
-}
-
-/*
- * Sends last message of a player to him
- *
- *
- * server_socket: server socket to be used for sending
- *
- * p: player to whom should be sent his last message
- * */
-void respond_type_4(int server_socket, struct player *player) {
-	if (player->last_message.data != NULL) {
-		send_message(server_socket, player, player->last_message);
-	} else fprintf(stderr, "Last message is null\n");
 }
 
 void respond_type_5_0(int server_socket, struct player *player) {
@@ -598,7 +441,7 @@ void respond_type_21(int server_socket, struct game **games, struct player *play
  * return: 0 if a response has been sent, 1 if a response has been sent and another message should come from a client
  * and -1 otherwise
  * */
-void *respond_player(void *thread_data) {
+void *respond(void *thread_data) {
 	struct thread_data *data;
 	int server_socket;
 	struct game **games;
@@ -612,40 +455,41 @@ void *respond_player(void *thread_data) {
 	run = 1;
 
 	while (run) {
-		while ((received = find_and_remove_message(data->buffer, player->name)) == NULL)
+		sem_wait(data->sem);
+		received = get_message(data->buffer);
 
-
-			if (received->type == -1 || check_checksum(received) != 1) {
-				send_invalid_data(server_socket, player);
-		} else if (received->number == player->received_datagrams + 1) {
-			player->received_datagrams++;
+		if (check_checksum(received) == 1) {
+			player = find_player(games, received->nick);
+			if (received->number == player->received_datagrams + 1) {
+				player->received_datagrams++;
 				send_ack(server_socket, player, *received);
 
-			switch (received->type) {
-				case 3:    // Invalid data
-				case 4:    // Resend last message
-					respond_type_4(server_socket, player);
-					break;
-				case 5:    // Connect request
-					respond_type_5(server_socket, player->client_addr, player->client_addr_length, games, *received);
-					break;
-				case 7:    // Reconnect request
-					respond_type_7(server_socket, games, player);
-					break;
-				case 10:    // Disconnecting
-					respond_type_10(server_socket, games, player);
-					break;
-				case 18:    // Move
-					respond_type_18(server_socket, games, player, *received);
-					break;
-				case 21:    // Guessing the word
-					respond_type_21(server_socket, games, player, *received);
-					break;
-				default:
-					break;
+				switch (received->type) {
+					case 2:    //Ack
+//						TODO check sent messages and remove this one
+						break;
+					case 5:    // Connect request
+						respond_type_5(server_socket, player->client_addr, player->client_addr_length, games,
+						               *received);
+						break;
+					case 7:    // Reconnect request
+						respond_type_7(server_socket, games, player);
+						break;
+					case 10:    // Disconnecting
+						respond_type_10(server_socket, games, player);
+						break;
+					case 18:    // Move
+						respond_type_18(server_socket, games, player, *received);
+						break;
+					case 21:    // Guessing the word
+						respond_type_21(server_socket, games, player, *received);
+						break;
+					default:
+						break;
+				}
+			} else if (received->number <= player->received_datagrams) {
+				send_ack(server_socket, player, *received);
 			}
-		} else if (received->number <= player->received_datagrams) {
-				send_ack(server_socket, player, *received);
 		}
 //		TODO free received
 		if (received->nick != NULL) free(received->nick);

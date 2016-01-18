@@ -21,10 +21,14 @@ struct message {
 	char *data;
 	/*Player's nickname*/
 	char *nick;
+	struct sockaddr_in client_addr;
+	socklen_t client_addr_length;
 };
 
 struct list {
 	struct message message;
+	clock_t sent_time;
+	struct player *player;
 	struct list *next;
 };
 
@@ -48,8 +52,6 @@ struct player {
 	int wrong_guesses;
 	/*Nickname of a player*/
 	char *name;
-	/*Last sent message*/
-	struct message last_message;
 };
 
 /*
@@ -79,11 +81,10 @@ struct game {
 
 struct thread_data {
 	int server_socket;
-	struct sockaddr_in client_addr;
-	socklen_t client_addr_length;
 	struct game **games;
 	struct list **buffer;
-	struct list **acks;;
+	struct list **sent_messages;
+	sem_t *sem;
 };
 
 #endif

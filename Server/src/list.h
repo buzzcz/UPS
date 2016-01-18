@@ -5,7 +5,7 @@
 
 void add_message(struct list **l, struct message message);
 
-struct message *find_and_remove_message(struct list **l, char *player);
+struct message *get_message(struct list **l);
 
 void free_list(struct list *l);
 

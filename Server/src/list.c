@@ -22,7 +22,7 @@ void add_message(struct list **l, struct message message) {
 	}
 }
 
-struct message *find_and_remove_message(struct list **l, char *player) {
+struct message *get_message(struct list **l) {
 	if (*l != NULL) {
 		struct message *m = &((*l)->message);
 		*l = (*l)->next;
