@@ -97,6 +97,7 @@ void run_server(int server_socket) {
 		struct message received;
 
 		received = receive_message(server_socket, &client_addr, &client_addr_length);
+//		TODO which messages to server buffer??
 		if (received.type == 2) {
 			add_message(&acks, received);
 			pthread_cond_broadcast(&a_cond);

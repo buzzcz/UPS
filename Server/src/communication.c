@@ -87,7 +87,6 @@ struct message receive_message(int server_socket, struct sockaddr_in *client_add
 		return m;
 	}
 
-	m.data = malloc((size_t) m.data_size);
 	received = malloc((size_t) (PEEK_SIZE + m.data_size + 1));
 	*client_addr_length = sizeof(*client_addr);
 	read_bytes = (int) recvfrom(server_socket, received, (size_t) read_bytes, 0, (struct sockaddr *) client_addr,
@@ -103,8 +102,21 @@ struct message receive_message(int server_socket, struct sockaddr_in *client_add
 	m.checksum = atoi(tmp);
 	strtok(NULL, ";");
 	tmp = strtok(NULL, ";");
-//	TODO get player nick from data
-	if (tmp != NULL) strcpy(m.data, tmp);
+	if (tmp != NULL) {
+		char *nick;
+
+		nick = strtok(NULL, ",");
+		if (nick != NULL) {
+			tmp = strtok(NULL, ",");
+			m.data_size -= strlen(nick) + 1;
+			m.nick = malloc(strlen(nick) * sizeof(char));
+			strcpy(m.nick, nick);
+			m.data = malloc(m.data_size * sizeof(char));
+		} else {
+			m.nick = NULL;
+		}
+		strcpy(m.data, tmp);
+	}
 	else m.data = NULL;
 
 	free(received);
@@ -266,7 +278,7 @@ void send_invalid_data(int server_socket) {
 	m.number = player->sent_datagrams++;
 	m.type = 3;
 	m.data_size = 0;
-	m.data = "";
+	m.data = NULL;
 	calculate_checksum(&m);
 
 	send_message(server_socket, player, m);
@@ -287,41 +299,43 @@ void respond_type_4(int server_socket) {
 }
 
 void respond_type_5_0(int server_socket) {
-	char *message;
+	struct message m;
 
-//	TODO checksum
-	message = malloc(7 * sizeof(char));
-	sprintf(message, "1;6;1;1");
-	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &(player->client_addr),
-	       player->client_addr_length);
+	m.number = player->sent_datagrams++;
+	m.type = 6;
+	m.data_size = 1;
+	m.data = malloc(m.data_size * sizeof(char));
+	m.data = "1";
+	calculate_checksum(&m);
+	send_message(server_socket, player, m);
+
+	free(m.data);
 }
 
 void respond_type_5_2(int server_socket) {
-	char *message;
+	struct message m;
 
-//	TODO checksum
-	message = malloc(7 * sizeof(char));
-	sprintf(message, "1;6;1;2");
-	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &(player->client_addr),
-	       player->client_addr_length);
+	m.number = player->sent_datagrams++;
+	m.type = 6;
+	m.data_size = 1;
+	m.data = malloc(m.data_size * sizeof(char));
+	m.data = "2";
+	calculate_checksum(&m);
+	send_message(server_socket, player, m);
+
+	free(m.data);
 }
 
 void respond_type_5(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length,
                     struct game **games, struct message received) {
-	char *data, *name;
-
-	data = malloc((size_t) received.data_size);
-	strcpy(data, received.data);
-
-	name = strtok(data, ",");
-	if (is_already_logged(games, name) == 1) {
+	if (is_already_logged(games, player->name) == 1) {
 		int opponents;
 		struct message message;
 		struct player *new;
 
-		opponents = atoi(strtok(NULL, ","));
+		opponents = atoi(received.data);
 
-		new = create_player(client_addr, client_addr_length, opponents, name);
+		new = create_player(client_addr, client_addr_length, opponents, player->name);
 		add_player_to_game(games, new);
 
 		message.number = new->sent_datagrams++;
@@ -460,6 +474,56 @@ void respond_type_18(int server_socket, struct game **games, struct message rece
 	free(message.data);
 }
 
+void respond_type_21_win(int server_socket, struct game *game, struct message received) {
+	struct message message;
+	int i;
+
+	message.number = player->sent_datagrams++;
+	message.type = 14;
+	message.data_size = 0;
+	message.data = NULL;
+	calculate_checksum(&message);
+	send_message(server_socket, player, message);
+
+	message.type = 15;
+	message.data_size = (int) strlen(player->name);
+	message.data = malloc(message.data_size * sizeof(char));
+	strcpy(message.data, player->name);
+	for (i = 0; i < game->players_count; i++) {
+		if (strcmp(game->players[i]->name, player->name) != 0) {
+//		    TODO send from other player thread
+			message.number = game->players[i]->sent_datagrams++;
+			calculate_checksum(&message);
+			send_message(server_socket, game->players[i], message);
+		}
+	}
+}
+
+void respond_type_21_lose(int server_socket, struct game *game, struct message received) {
+	struct message message;
+	int i;
+
+	message.number = player->sent_datagrams++;
+	message.type = 12;
+	message.data_size = 0;
+	message.data = NULL;
+	calculate_checksum(&message);
+	send_message(server_socket, player, message);
+
+	message.type = 13;
+	message.data_size = (int) strlen(player->name);
+	message.data = malloc(message.data_size * sizeof(char));
+	strcpy(message.data, player->name);
+	for (i = 0; i < game->players_count; i++) {
+		if (strcmp(game->players[i]->name, player->name) != 0) {
+//		    TODO send from other player thread
+			message.number = game->players[i]->sent_datagrams++;
+			calculate_checksum(&message);
+			send_message(server_socket, game->players[i], message);
+		}
+	}
+}
+
 /*
  * Sends a notification to other players about a player who guessed a word and sends win or lose messages
  *
@@ -493,15 +557,11 @@ void respond_type_21(int server_socket, struct game **games, struct message rece
 
 	free(message.data);
 
-//	TODO send win or lose message
-}
-
-void respond_type_21_win(int server_socket, struct game **games, struct message received) {
-
-}
-
-void respond_type_21_lose(int server_socket, struct game **games, struct message received) {
-
+	if (strcmp(received.data, game->guessed_word) == 0) {
+		respond_type_21_win(server_socket, game, received);
+	} else {
+		respond_type_21_lose(server_socket, game, received);
+	}
 }
 
 /*
@@ -571,6 +631,8 @@ void *respond_player(void *thread_data) {
 			send_ack(server_socket, *received);
 		}
 //		TODO free received
+		if (received->nick != NULL) free(received->nick);
+		if (received->data != NULL) free(received->data);
 	}
 	pthread_exit(0);
 }
