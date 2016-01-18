@@ -218,6 +218,26 @@ void send_message(int server_socket, struct player *player, struct message m) {
 	free(message);
 }
 
+void send_invalid_data(int server_socket);
+
+void check_ack(int server_socket, struct list *acks) {
+	int ok = 0;
+
+	while (!ok) {
+		struct message *ack;
+
+		ack = find_and_remove_message(&acks, player->name);
+		if (ack->type == -1 || check_checksum(ack) != 1) {
+			send_invalid_data(server_socket);
+		} else if (ack->number == player->received_datagrams + 1) {
+			player->received_datagrams++;
+			ok = 1;
+		} else if (ack->number > player->received_datagrams + 1) {
+			send_invalid_data(server_socket);
+		}
+	}
+}
+
 /*
  * Sends acknowledgement message to the received message
  *
