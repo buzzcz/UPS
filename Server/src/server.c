@@ -1,13 +1,17 @@
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <pthread.h>
 #include "structures.h"
 #include "communication.h"
 #include "game.h"
 #include "server.h"
+#include "list.h"
+
+struct list *buffer, *acks, *server_buffer;
+pthread_mutex_t b, a, sb;
+pthread_cond_t b_cond, a_cond, sb_cond;
 
 /*
  * Creates new server socket and sets server attributes
@@ -53,8 +57,20 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
 }
 
 void int_handler(int signal) {
-	printf("Exiting...");
+	printf("Exiting...\n");
 	exit(0);
+}
+
+void init_variables() {
+	buffer = NULL;
+	acks = NULL;
+	server_buffer = NULL;
+	pthread_mutex_init(&b, NULL);
+	pthread_mutex_init(&a, NULL);
+	pthread_mutex_init(&sb, NULL);
+	pthread_cond_init(&b_cond, NULL);
+	pthread_cond_init(&a_cond, NULL);
+	pthread_cond_init(&sb_cond, NULL);
 }
 
 /*
@@ -68,20 +84,26 @@ void run_server(int server_socket) {
 	struct game *games;
 
 	signal(SIGINT, int_handler);
+	init_variables();
 
 	games = NULL;
-//	TODO proper exit after Ctrl + C - frees and so on
+
+//	TODO create and run consumer threads - one general and it starts new thread for each player
+
+//	TODO proper exit after Ctrl + C - frees, message to clients and so on
 	while (1) {
 		socklen_t client_addr_length;
 		struct sockaddr_in client_addr;
 		struct message received;
 
-		printf("Server is waiting for data\n");
 		received = receive_message(server_socket, &client_addr, &client_addr_length);
-		if (received.type != -1) {
-			printf("Client sent: %s\n", received.data);
+		if (received.type == 2) {
+			add_message(&acks, received);
+			pthread_cond_broadcast(&a_cond);
+		} else {
+			add_message(&buffer, received);
+			pthread_cond_broadcast(&b_cond);
 		}
-		respond(server_socket, client_addr, client_addr_length, received, &games);
 
 //		TODO remove
 		if (sent_datagrams < 0) {

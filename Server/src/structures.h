@@ -1,6 +1,10 @@
 #ifndef STRUCTURES
 #define STRUCTURES
 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <semaphore.h>
+
 /*
  * Structure for messages
  * */
@@ -15,6 +19,13 @@ struct message {
 	int data_size;
 	/*Data in datagram*/
 	char *data;
+	/*Player's nickname*/
+	char *nick;
+};
+
+struct list {
+	struct message message;
+	struct list *next;
 };
 
 /*
@@ -64,6 +75,17 @@ struct game {
 	char guessed_letters[28];
 	/*Field of players in a game*/
 	struct player **players;
+};
+
+struct thread_data {
+	int server_socket;
+	struct sockaddr_in client_addr;
+	socklen_t client_addr_length;
+	struct game **games;
+	struct list **buffer;
+	struct list **acks;
+	pthread_mutex_t *b, *a, *sb;
+	pthread_cond_t *b_cond, *a_cond, *sb_cond;
 };
 
 #endif

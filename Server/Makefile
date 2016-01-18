@@ -1,6 +1,6 @@
 CC = gcc
 BIN = server
-OBJ = src/main.o src/server.o src/communication.o src/game.o
+OBJ = src/main.o src/server.o src/communication.o src/game.o src/list.o
 
 %.o:	%.c
 	$(CC) -c $< -o $@
