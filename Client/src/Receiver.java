@@ -1,6 +1,6 @@
-import javax.swing.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -16,18 +16,16 @@ public class Receiver extends Thread {
 	 * Buffer for received messages
 	 */
 	private ArrayList<Message> buffer;
-	/**
-	 * Buffer for received acknowledgements
-	 */
-	private ArrayList<Message> acks;
+	private ArrayList<Message> sentMessages;
 	/**
 	 * Semaphore indicating that a buffer has a message in it
 	 */
 	private Semaphore m;
-	/**
-	 * Semaphore indicating that new ack has been received
-	 */
-	private Semaphore a;
+
+	int noAck;
+
+	private static int TIME_TO_ACK = 5000;
+	private static int NO_ACKS_BEFORE_NO_NET = 3;
 
 	/******************************************************************************************************************/
 
@@ -37,8 +35,9 @@ public class Receiver extends Thread {
 	public Receiver(Connection udp) {
 		this.udp = udp;
 		buffer = new ArrayList<Message>();
+		sentMessages = new ArrayList<Message>();
 		m = new Semaphore(0);
-		a = new Semaphore(0);
+		noAck = 0;
 		this.start();
 	}
 
@@ -50,16 +49,25 @@ public class Receiver extends Thread {
 		while (true) {
 			try {
 				Message received = udp.receiveMessage();
-				if (received.getType() == 2) {
-					acks.add(received);
-					a.release();
-				}
-				else {
+				checkSentMessages();
+				if (received.getType() != -1) {
 					buffer.add(received);
 					m.release();
 				}
 			} catch (IOException e) {
-				JOptionPane.showMessageDialog(null, "UDP receive error", "UDP error", JOptionPane.ERROR_MESSAGE);
+				checkSentMessages();
+			}
+		}
+	}
+
+	private void checkSentMessages() {
+		for (int i = 0; i < sentMessages.size(); i++) {
+			long now = new Date().getTime();
+			if (now - sentMessages.get(i).getSentTime() > TIME_TO_ACK) {
+				Message m = sentMessages.remove(i);
+				udp.sendMessage(m, sentMessages);
+				noAck++;
+				if (noAck > NO_ACKS_BEFORE_NO_NET) System.err.println("Connection lost");
 			}
 		}
 	}
@@ -79,18 +87,20 @@ public class Receiver extends Thread {
 		}
 	}
 
-	/**
-	 * Getter for acknowledgement from a buffer
-	 *
-	 * @return acknowledgement from a buffer
-	 */
-	public Message getAckFromBuffer() {
-		try {
-			a.acquire();
-			return acks.remove(0);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			return null;
+	public void ackMessage(Message ack) {
+		for (int i = 0; i < sentMessages.size(); i++) {
+			if (sentMessages.get(i).getNumber() == Integer.parseInt(ack.getData())) {
+				sentMessages.remove(i);
+				break;
+			}
 		}
+	}
+
+	public void zeroNoAck() {
+		noAck = 0;
+	}
+
+	public ArrayList<Message> getSentMessages() {
+		return sentMessages;
 	}
 }

@@ -31,7 +31,7 @@ public class Game {
 	private boolean myMove;
 	/**
 	 * Last sent message
-	 * */
+	 */
 	private Message lastMessage;
 
 	/******************************************************************************************************************/
@@ -125,6 +125,7 @@ public class Game {
 
 	/**
 	 * Getter for last sent message
+	 *
 	 * @return last sent message
 	 */
 	public Message getLastMessage() {
@@ -133,6 +134,7 @@ public class Game {
 
 	/**
 	 * Setter for last sent message
+	 *
 	 * @param lastMessage last sent message
 	 */
 	public void setLastMessage(Message lastMessage) {
@@ -152,6 +154,7 @@ public class Game {
 
 	/**
 	 * Says if it is my move
+	 *
 	 * @return <code>true</code> if it is my move;<code>false</code> otherwise
 	 */
 	public boolean isMyMove() {
@@ -160,6 +163,7 @@ public class Game {
 
 	/**
 	 * Setter for my move
+	 *
 	 * @param myMove my move
 	 */
 	public void setMyMove(boolean myMove) {

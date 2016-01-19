@@ -1,5 +1,7 @@
 import java.io.IOException;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.Date;
 
 /**
  * Class for UDP connection and communication
@@ -29,6 +31,9 @@ public class Connection {
 	 */
 	private int numberOfReceivedDatagrams;
 
+	static final int TIMEOUT = 5000;
+	private final int BUFFER_SIZE = 1024;
+
 	/******************************************************************************************************************/
 
 	/**
@@ -49,12 +54,11 @@ public class Connection {
 		} catch (SocketException e) {
 			System.out.println("Socket could not be made");
 		}
-//		TODO timeout
-		/*try {
-			socket.setSoTimeout(3000);
+		try {
+			socket.setSoTimeout(TIMEOUT);
 		} catch (SocketException e) {
 			System.out.println("Socket timeout could not be set");
-		}*/
+		}
 	}
 
 	/**
@@ -69,12 +73,16 @@ public class Connection {
 	 *
 	 * @param message message to be sent
 	 */
-	public void sendMessage(Message message) {
+	public void sendMessage(Message message, ArrayList<Message> sentMessages) {
 		DatagramPacket send = new DatagramPacket(message.getMessageByte(), message.getMessageByte().length, host,
 				port);
 		System.out.println("Client is sending: " + message.getMessage());
 		try {
 			socket.send(send);
+			if (message.getType() != 2) {
+				message.setSentTime(new Date().getTime());
+				sentMessages.add(message);
+			}
 		} catch (IOException e) {
 			System.out.println("Message could not be sent");
 		}
@@ -86,7 +94,7 @@ public class Connection {
 	 * @return received message
 	 */
 	public Message receiveMessage() throws IOException {
-		byte[] buffer = new byte[1024];
+		byte[] buffer = new byte[BUFFER_SIZE];
 		DatagramPacket receive = new DatagramPacket(buffer, buffer.length);
 		socket.receive(receive);
 
@@ -152,9 +160,5 @@ public class Connection {
 	 */
 	public void increaseNumberOfReceivedDatagrams() {
 		numberOfReceivedDatagrams++;
-	}
-
-	public void setSocketTimeout(int timeout) throws SocketException {
-		socket.setSoTimeout(timeout);
 	}
 }

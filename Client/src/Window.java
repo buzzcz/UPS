@@ -1,8 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.IOException;
-import java.net.SocketException;
 
 /**
  * @author Jaroslav Klaus
@@ -95,45 +93,15 @@ public class Window extends JFrame {
 		int result = JOptionPane.showOptionDialog(Window.this, "Do you want to exit the game?", "Exit game",
 				JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 		if (result == JOptionPane.YES_OPTION) {
-//		TODO exit game - send leaving info
-			receiver.stop();
-			consumer.stop();
+//		    TODO hot to exit game - send leaving info
+			receiver.interrupt();
+			consumer.interrupt();
 			if (game != null) {
 				Message m = new Message(udp.increaseNumberOfSentDatagrams(), 10, nick.length(), nick);
-				udp.sendMessage(m);
-				try {
-//					TODO timeout
-					udp.setSocketTimeout(3000);
-				} catch (SocketException e) {
-					JOptionPane.showMessageDialog(this, e.getMessage(), e.getClass().getSimpleName(), JOptionPane
-							.ERROR_MESSAGE);
-				}
-				waitForDisconnectAck(m, 0);
+				udp.sendMessage(m, receiver.getSentMessages());
 			}
 			if (udp != null) udp.close();
 			System.exit(0);
-		}
-	}
-
-	/**
-	 * Receives messages until acknowledgement for disconnect message or timeout, then sends disconnect again
-	 *
-	 * @param m disconnect message
-	 * @param i number of tries to get disconnected
-	 */
-	private void waitForDisconnectAck(Message m, int i) {
-		if (i > 3) return;
-		try {
-			Message r;
-			while ((r = udp.receiveMessage()).getType() != 2) {
-			}
-			if (Integer.parseInt(r.getData()) != udp.getNumberOfSentDatagrams()) {
-				throw new IOException();
-			}
-		} catch (IOException e) {
-			udp.sendMessage(m);
-			i++;
-			waitForDisconnectAck(m, i);
 		}
 	}
 
@@ -164,8 +132,7 @@ public class Window extends JFrame {
 					Message m = new Message(udp.getNumberOfSentDatagrams(), 5, nick.length() +
 							opponentsSpinner.getValue().toString().length() + 1, nick + "," +
 							opponentsSpinner.getValue().toString());
-					udp.sendMessage(m);
-					game.setLastMessage(m);
+					udp.sendMessage(m, receiver.getSentMessages());
 				}
 			}
 		});
@@ -181,8 +148,7 @@ public class Window extends JFrame {
 				if (result == JOptionPane.OK_OPTION) {
 					nick = nickField.getText();
 					Message m = new Message(udp.getNumberOfSentDatagrams(), 7, nick.length(), nick);
-					udp.sendMessage(m);
-					game.setLastMessage(m);
+					udp.sendMessage(m, receiver.getSentMessages());
 				}
 			}
 		});
@@ -258,7 +224,8 @@ public class Window extends JFrame {
 				if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
 						.getKeyChar() == '\'' || e.getKeyChar() == ' ')) {
 					String data = e.getKeyChar() + "";
-					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 17, data.length(), data.toUpperCase());
+					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 17, data.length(), data.toUpperCase
+							());
 					game.setLastMessage(m);
 					lastGuessed = data.charAt(0);
 					setStatusLabelText("You guessed " + lastGuessed);

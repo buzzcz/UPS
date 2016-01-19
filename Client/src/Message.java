@@ -24,6 +24,7 @@ public class Message {
 	 * Data in datagram
 	 */
 	private String data;
+	private long sentTime;
 
 	/******************************************************************************************************************/
 
@@ -136,5 +137,23 @@ public class Message {
 	 */
 	public String getData() {
 		return data;
+	}
+
+	/**
+	 * Getter fot sent time
+	 *
+	 * @return sent time
+	 */
+	public long getSentTime() {
+		return sentTime;
+	}
+
+	/**
+	 * Setter for sent time
+	 *
+	 * @param sentTime sent time
+	 */
+	public void setSentTime(long sentTime) {
+		this.sentTime = sentTime;
 	}
 }

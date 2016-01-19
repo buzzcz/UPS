@@ -23,17 +23,14 @@ public class ProcessMessage extends Thread {
 
 		while (true) {
 			received = receiver.getMessageFromBuffer();
-			if (received.getType() == -1 || !received.checkChecksum()) {
-				sendInvalidData();
-			} else if (received.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
+			if (received.checkChecksum() && received.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
 				udp.increaseNumberOfReceivedDatagrams();
-//				TODO send ack!!
+				sendAck(String.valueOf(received.getNumber()));
 
 				switch (received.getType()) {
-					case 3: // Invalid data
-					case 4: // Resend last message
-						udp.sendMessage(window.getGame().getLastMessage());
-						checkAck();
+					case 2: // Ack
+						receiver.ackMessage(received);
+						receiver.zeroNoAck();
 						break;
 					case 6: // Answer to connect request
 						respondType6(received);
@@ -84,25 +81,8 @@ public class ProcessMessage extends Thread {
 	}
 
 	private void sendAck(String receivedNumber) {
-		udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 2, receivedNumber.length(), receivedNumber));
-	}
-
-	public void checkAck() {
-		Message ack = receiver.getAckFromBuffer();
-		if (ack.getType() == -1 || !ack.checkChecksum()) {
-			sendInvalidData();
-		} else if (ack.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
-			udp.increaseNumberOfReceivedDatagrams();
-		} else if (ack.getNumber() > udp.getNumberOfReceivedDatagrams() + 1) {
-			sendInvalidData();
-		}
-	}
-
-	private void sendInvalidData() {
-		Message m = new Message(udp.increaseNumberOfSentDatagrams(), 3, window.getNick().length(), window.getNick());
-		udp.sendMessage(m);
-		window.getGame().setLastMessage(m);
-		checkAck();
+		udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 2, receivedNumber.length(), receivedNumber),
+				receiver.getSentMessages());
 	}
 
 	private void respondType6(Message received) {
@@ -164,8 +144,7 @@ public class ProcessMessage extends Thread {
 		while (window.getGame().isMyMove()) {
 			yield();
 		}
-		udp.sendMessage(window.getGame().getLastMessage());
-		checkAck();
+		udp.sendMessage(window.getGame().getLastMessage(), receiver.getSentMessages());
 	}
 
 	private void respondType17(Message received) {
@@ -179,8 +158,7 @@ public class ProcessMessage extends Thread {
 			if (received.getData().charAt(i) == '1') {
 				newWord += window.getLastGuessed();
 				hit = true;
-			}
-			else newWord += word.charAt(i);
+			} else newWord += word.charAt(i);
 		}
 		if (!hit) {
 			window.getGame().wrongGuess();

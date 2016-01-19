@@ -1,4 +1,3 @@
-import javax.swing.*;
 import java.awt.*;
 
 /**
@@ -16,8 +15,7 @@ public class Main {
 				}
 			});
 		} catch (Exception e) {
-			JOptionPane.showMessageDialog(null, e.getMessage(), e.getClass().getSimpleName(), JOptionPane
-					.ERROR_MESSAGE);
+			System.err.println(e.getMessage());
 		}
 	}
 }
