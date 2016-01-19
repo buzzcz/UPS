@@ -89,7 +89,7 @@ struct message create_ack(int *sent_datagrams, struct message received) {
  *
  * message: message to be sent
  * */
-void send_message(int server_socket, struct player *player, struct message m) {
+void send_message(int server_socket, struct player *player, struct message m, struct list **sent_messages) {
 	char *message;
 
 	message = malloc((size_t) (PEEK_SIZE + m.data_size));
@@ -97,7 +97,7 @@ void send_message(int server_socket, struct player *player, struct message m) {
 	printf("Server is sending: %s\n", message);
 	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &(player->client_addr),
 	       player->client_addr_length);
-//	TODO add message to sent buffer
+	add_message(sent_messages, m, player);
 
 	free(message);
 }
@@ -127,36 +127,7 @@ void send_ack(int server_socket, struct player *player, struct message received)
 	free(message);
 }
 
-/*
- * Sends acknowledgement message to an unknown player
- *
- *
- * server_socket: server socket to be used for sending
- *
- * client_addr: client's attributes
- *
- * client_addr_length: client's attributes length
- *
- * received: received message to send acknowledgement to
- * */
-void send_ack_unknown_player(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length,
-                             struct message received) {
-	struct message ack;
-	int sent;
-	char *message;
-
-	sent = 1;
-	ack = create_ack(&sent, received);
-	message = malloc((size_t) (PEEK_SIZE + ack.data_size));
-	sprintf(message, "%d;%d;%d;%d;%s\n", ack.number, ack.type, ack.checksum, ack.data_size, ack.data);
-	printf("Server is sending: %s", message);
-	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &client_addr, client_addr_length);
-
-	free(ack.data);
-	free(message);
-}
-
-void respond_type_5_0(int server_socket, struct player *player) {
+void respond_type_5_0(int server_socket, struct player *player, struct list **sent_messages) {
 	struct message m;
 
 	m.number = player->sent_datagrams++;
@@ -165,12 +136,12 @@ void respond_type_5_0(int server_socket, struct player *player) {
 	m.data = malloc(m.data_size * sizeof(char));
 	m.data = "1";
 	calculate_checksum(&m);
-	send_message(server_socket, player, m);
+	send_message(server_socket, player, m, sent_messages);
 
 	free(m.data);
 }
 
-void respond_type_5_2(int server_socket, struct player *player) {
+void respond_type_5_2(int server_socket, struct player *player, struct list **sent_messages) {
 	struct message m;
 
 	m.number = player->sent_datagrams++;
@@ -179,22 +150,39 @@ void respond_type_5_2(int server_socket, struct player *player) {
 	m.data = malloc(m.data_size * sizeof(char));
 	m.data = "2";
 	calculate_checksum(&m);
-	send_message(server_socket, player, m);
+	send_message(server_socket, player, m, sent_messages);
 
 	free(m.data);
 }
 
+void send_start(int server_socket, struct game **games, int id, struct list **sent_messages) {
+	struct message m;
+	struct game *game;
+	int i;
+
+	game = find_game(games, id);
+	m.type = 9;
+	m.data_size = number_length((int) strlen(game->guessed_word));
+	m.data = malloc(m.data_size * sizeof(char));
+	sprintf(m.data, "%d", (int) strlen(game->guessed_word));
+	for (i = 0; i < game->players_count; i++) {
+		m.number = game->players[i]->sent_datagrams++;
+		calculate_checksum(&m);
+		send_message(server_socket, game->players[i], m, sent_messages);
+	}
+}
+
 void respond_type_5(int server_socket, struct sockaddr_in client_addr, socklen_t client_addr_length,
-                    struct game **games, struct message received) {
+                    struct game **games, struct message received, struct list **sent_messages) {
 	if (is_already_logged(games, received.nick) == 1) {
-		int opponents;
+		int opponents, id;
 		struct message message;
 		struct player *new;
 
 		opponents = atoi(received.data);
 
 		new = create_player(client_addr, client_addr_length, opponents, received.nick);
-		add_player_to_game(games, new);
+		id = add_player_to_game(games, new);
 
 		message.number = new->sent_datagrams++;
 		message.type = 6;
@@ -203,17 +191,21 @@ void respond_type_5(int server_socket, struct sockaddr_in client_addr, socklen_t
 		sprintf(message.data, "0");
 		calculate_checksum(&message);
 
-		send_message(server_socket, new, message);
+		send_message(server_socket, new, message, sent_messages);
 
 		free(message.data);
+
+		if (id != -1) {
+			send_start(server_socket, games, id, sent_messages);
+		}
 	} else {
 		struct player *player = find_player(games, received.nick);
 		struct game *game = find_game(games, player->game);
 
 		if (game->state == 0 || game->state == 1) {
-			respond_type_5_0(server_socket, player);
+			respond_type_5_0(server_socket, player, sent_messages);
 		} else if (game->state == 2) {
-			respond_type_5_2(server_socket, player);
+			respond_type_5_2(server_socket, player, sent_messages);
 		}
 	}
 }
@@ -228,7 +220,7 @@ void respond_type_5(int server_socket, struct sockaddr_in client_addr, socklen_t
  *
  * player: reconnecting player
  * */
-void respond_type_7(int server_socket, struct game **games, struct player *player) {
+void respond_type_7(int server_socket, struct game **games, struct player *player, struct list **sent_messages) {
 	struct message message;
 	struct game *game;
 	int size;
@@ -249,7 +241,7 @@ void respond_type_7(int server_socket, struct game **games, struct player *playe
 	sprintf(message.data, "%d,%s,%d", (int) strlen(game->guessed_word), game->guessed_letters, player->wrong_guesses);
 	calculate_checksum(&message);
 
-	send_message(server_socket, player, message);
+	send_message(server_socket, player, message, sent_messages);
 
 	free(message.data);
 }
@@ -264,7 +256,7 @@ void respond_type_7(int server_socket, struct game **games, struct player *playe
  *
  * player: disconnecting player
  * */
-void respond_type_10(int server_socket, struct game **games, struct player *player) {
+void respond_type_10(int server_socket, struct game **games, struct player *player, struct list **sent_messages) {
 	struct message message;
 	struct game *game;
 	int i;
@@ -281,7 +273,7 @@ void respond_type_10(int server_socket, struct game **games, struct player *play
 		} else {
 			message.number = game->players[i]->sent_datagrams++;
 			calculate_checksum(&message);
-			send_message(server_socket, game->players[i], message);
+			send_message(server_socket, game->players[i], message, sent_messages);
 		}
 	}
 
@@ -300,7 +292,8 @@ void respond_type_10(int server_socket, struct game **games, struct player *play
  *
  * received: message from the player with the move
  * */
-void respond_type_18(int server_socket, struct game **games, struct player *player, struct message received) {
+void respond_type_18(int server_socket, struct game **games, struct player *player, struct message received,
+                     struct list **sent_messages) {
 	struct message message;
 	struct game *game;
 	char *reply;
@@ -314,7 +307,7 @@ void respond_type_18(int server_socket, struct game **games, struct player *play
 	reply = check_guess(game, received, (size_t) message.data_size);
 	message.data = reply;
 	calculate_checksum(&message);
-	send_message(server_socket, player, message);
+	send_message(server_socket, player, message, sent_messages);
 
 	message.type = 20;
 	message.data_size = (int) strlen(player->name) + message.data_size + 1;
@@ -325,7 +318,7 @@ void respond_type_18(int server_socket, struct game **games, struct player *play
 		if (strcmp(game->players[i]->name, player->name) != 0) {
 			message.number = game->players[i]->sent_datagrams++;
 			calculate_checksum(&message);
-			send_message(server_socket, game->players[i], message);
+			send_message(server_socket, game->players[i], message, sent_messages);
 		}
 	}
 
@@ -333,7 +326,7 @@ void respond_type_18(int server_socket, struct game **games, struct player *play
 	free(message.data);
 }
 
-void respond_type_21_win(int server_socket, struct player *player, struct game *game, struct message received) {
+void respond_type_21_win(int server_socket, struct player *player, struct game *game, struct list **sent_messages) {
 	struct message message;
 	int i;
 
@@ -342,7 +335,7 @@ void respond_type_21_win(int server_socket, struct player *player, struct game *
 	message.data_size = 0;
 	message.data = NULL;
 	calculate_checksum(&message);
-	send_message(server_socket, player, message);
+	send_message(server_socket, player, message, sent_messages);
 
 	message.type = 15;
 	message.data_size = (int) strlen(player->name);
@@ -350,15 +343,14 @@ void respond_type_21_win(int server_socket, struct player *player, struct game *
 	strcpy(message.data, player->name);
 	for (i = 0; i < game->players_count; i++) {
 		if (strcmp(game->players[i]->name, player->name) != 0) {
-//		    TODO send from other player thread
 			message.number = game->players[i]->sent_datagrams++;
 			calculate_checksum(&message);
-			send_message(server_socket, game->players[i], message);
+			send_message(server_socket, game->players[i], message, sent_messages);
 		}
 	}
 }
 
-void respond_type_21_lose(int server_socket, struct player *player, struct game *game, struct message received) {
+void respond_type_21_lose(int server_socket, struct player *player, struct game *game, struct list **sent_messages) {
 	struct message message;
 	int i;
 
@@ -367,7 +359,7 @@ void respond_type_21_lose(int server_socket, struct player *player, struct game 
 	message.data_size = 0;
 	message.data = NULL;
 	calculate_checksum(&message);
-	send_message(server_socket, player, message);
+	send_message(server_socket, player, message, sent_messages);
 
 	message.type = 13;
 	message.data_size = (int) strlen(player->name);
@@ -375,10 +367,9 @@ void respond_type_21_lose(int server_socket, struct player *player, struct game 
 	strcpy(message.data, player->name);
 	for (i = 0; i < game->players_count; i++) {
 		if (strcmp(game->players[i]->name, player->name) != 0) {
-//		    TODO send from other player thread
 			message.number = game->players[i]->sent_datagrams++;
 			calculate_checksum(&message);
-			send_message(server_socket, game->players[i], message);
+			send_message(server_socket, game->players[i], message, sent_messages);
 		}
 	}
 }
@@ -395,7 +386,8 @@ void respond_type_21_lose(int server_socket, struct player *player, struct game 
  *
  * received: message from the player with guessed word
  * */
-void respond_type_21(int server_socket, struct game **games, struct player *player, struct message received) {
+void respond_type_21(int server_socket, struct game **games, struct player *player, struct message received,
+                     struct list **sent_messages) {
 	struct message message;
 	struct game *game;
 	int i;
@@ -410,18 +402,19 @@ void respond_type_21(int server_socket, struct game **games, struct player *play
 		if (strcmp(game->players[i]->name, player->name) != 0) {
 			message.number = game->players[i]->sent_datagrams++;
 			calculate_checksum(&message);
-			send_message(server_socket, game->players[i], message);
+			send_message(server_socket, game->players[i], message, sent_messages);
 		}
 	}
 
 	free(message.data);
 
 	if (strcmp(received.data, game->guessed_word) == 0) {
-		respond_type_21_win(server_socket, player, game, received);
+		respond_type_21_win(server_socket, player, game, sent_messages);
 	} else {
-		respond_type_21_lose(server_socket, player, game, received);
+		respond_type_21_lose(server_socket, player, game, sent_messages);
 	}
 }
+
 
 /*
  * Method that responds to a received message
@@ -447,15 +440,14 @@ void *respond(void *thread_data) {
 	struct game **games;
 	struct message *received;
 	struct player *player;
-	int run;
 
 	data = (struct thread_data *) thread_data;
 	server_socket = data->server_socket;
 	games = data->games;
-	run = 1;
 
-	while (run) {
+	while (1) {
 		sem_wait(data->sem);
+		pthread_mutex_lock(data->mutex);
 		received = get_message(data->buffer);
 
 		if (check_checksum(received) == 1) {
@@ -466,23 +458,24 @@ void *respond(void *thread_data) {
 
 				switch (received->type) {
 					case 2:    //Ack
-//						TODO check sent messages and remove this one
+						ack_message(data->sent_messages, received);
+						data->no_ack = 0;
 						break;
 					case 5:    // Connect request
-						respond_type_5(server_socket, player->client_addr, player->client_addr_length, games,
-						               *received);
+						respond_type_5(server_socket, player->client_addr, player->client_addr_length, games, *received,
+						               data->sent_messages);
 						break;
 					case 7:    // Reconnect request
-						respond_type_7(server_socket, games, player);
+						respond_type_7(server_socket, games, player, data->sent_messages);
 						break;
 					case 10:    // Disconnecting
-						respond_type_10(server_socket, games, player);
+						respond_type_10(server_socket, games, player, data->sent_messages);
 						break;
 					case 18:    // Move
-						respond_type_18(server_socket, games, player, *received);
+						respond_type_18(server_socket, games, player, *received, data->sent_messages);
 						break;
 					case 21:    // Guessing the word
-						respond_type_21(server_socket, games, player, *received);
+						respond_type_21(server_socket, games, player, *received, data->sent_messages);
 						break;
 					default:
 						break;
@@ -491,7 +484,7 @@ void *respond(void *thread_data) {
 				send_ack(server_socket, player, *received);
 			}
 		}
-//		TODO free received
+		pthread_mutex_unlock(data->mutex);
 		if (received->nick != NULL) free(received->nick);
 		if (received->data != NULL) free(received->data);
 	}

@@ -208,7 +208,7 @@ void create_game(struct game **games, int players_count, struct player *player) 
  *
  * player: player to be added to a game
  * */
-void add_player_to_game(struct game **games, struct player *player) {
+int add_player_to_game(struct game **games, struct player *player) {
 	struct game *iter;
 
 	iter = *games;
@@ -224,14 +224,14 @@ void add_player_to_game(struct game **games, struct player *player) {
 				}
 			}
 			if (i == iter->players_count) {
-//				TODO start the game
 				iter->state = 1;
 			}
-			return;
+			return iter->id;
 		}
 		iter = iter->next;
 	}
 	create_game(games, player->opponents + 1, player);
+	return -1;
 }
 
 /*
@@ -295,7 +295,6 @@ void remove_game(struct game **games, int id) {
 				if (iter->players[i] != NULL) free_player(iter->players[i]);
 			}
 			free(iter);
-			iter = NULL;
 		}
 	}
 }

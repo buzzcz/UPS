@@ -4,15 +4,21 @@
 #include <signal.h>
 #include <errno.h>
 #include <time.h>
+#include <pthread.h>
+#include <unistd.h>
 #include "structures.h"
 #include "communication.h"
 #include "game.h"
 #include "server.h"
 #include "list.h"
 
+pthread_t th[NUMBER_OF_THREADS];
+struct thread_data thread_data;
 struct game *games;
 struct list *buffer, *sent_messages;
 sem_t sem;
+pthread_mutex_t mutex;
+int no_acks;
 
 /*
  * Creates new server socket and sets server attributes
@@ -58,7 +64,15 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
 }
 
 void exit_handler(int signal) {
+//	TODO proper exit after Ctrl + C - frees, message to clients and so on
+	int i;
+
+	printf("Canceling threads...\n");
+	for (i = 0; i < NUMBER_OF_THREADS; i++) {
+		pthread_cancel(th[i]);
+	}
 	printf("Exiting...\n");
+	sleep(3);
 	exit(0);
 }
 
@@ -76,6 +90,16 @@ void init_server(int server_socket) {
 	buffer = NULL;
 	sent_messages = NULL;
 	sem_init(&sem, 0, 0);
+
+	thread_data.server_socket = server_socket;
+	thread_data.games = &games;
+	thread_data.buffer = &buffer;
+	thread_data.sent_messages = &sent_messages;
+	thread_data.sem = &sem;
+	pthread_mutex_init(&mutex, NULL);
+	thread_data.no_ack = &no_acks;
+
+	no_acks = 0;
 }
 
 /*
@@ -150,13 +174,15 @@ void peek_message(int *to_read, int server_socket, struct sockaddr_in *client_ad
  *
  * return: received message
  * */
-struct message receive_message(int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length) {
+struct message receive_message(int server_socket) {
+	struct sockaddr_in client_addr;
+	socklen_t client_addr_length;
 	int read_bytes, *to_read;
 	char *received, *tmp;
 	struct message m;
 
 	to_read = malloc(2 * sizeof(int));
-	peek_message(to_read, server_socket, client_addr, client_addr_length);
+	peek_message(to_read, server_socket, &client_addr, &client_addr_length);
 	read_bytes = to_read[0];
 	m.data_size = to_read[1];
 	free(to_read);
@@ -166,10 +192,10 @@ struct message receive_message(int server_socket, struct sockaddr_in *client_add
 	}
 
 	received = malloc((size_t) read_bytes + 1);
-	*client_addr_length = sizeof(*client_addr);
-	read_bytes = (int) recvfrom(server_socket, received, (size_t) read_bytes, 0, (struct sockaddr *) client_addr,
-	                            client_addr_length);
-	*client_addr_length = sizeof(*client_addr);
+	client_addr_length = sizeof(client_addr);
+	read_bytes = (int) recvfrom(server_socket, received, (size_t) read_bytes, 0, (struct sockaddr *) &client_addr,
+	                            &client_addr_length);
+	client_addr_length = sizeof(client_addr);
 	received[read_bytes] = '\0';
 
 	tmp = strtok(received, ";");
@@ -196,6 +222,8 @@ struct message receive_message(int server_socket, struct sockaddr_in *client_add
 		strcpy(m.data, tmp);
 	}
 	else m.data = NULL;
+	m.client_addr = client_addr;
+	m.client_addr_length = client_addr_length;
 
 	free(received);
 
@@ -203,34 +231,39 @@ struct message receive_message(int server_socket, struct sockaddr_in *client_add
 }
 
 void check_sent_messages(int server_socket) {
-	struct list *iter, *prev;
+	struct list *iter, *prev, *next;
 
 	iter = sent_messages;
 	prev = NULL;
+	next = NULL;
+	pthread_mutex_lock(&mutex);
 	while (iter != NULL) {
 		clock_t now;
 
 		now = clock();
 		if (now - iter->sent_time > TIME_TO_ACK) {
-			struct list *tmp;
-
-			if (prev != NULL) {
-				prev->next = iter->next;
-			}
-			tmp = iter;
-			while (tmp->next != NULL) tmp = tmp->next;
+			if (prev != NULL) prev->next = iter->next;
+			else next = iter->next;
 			iter->next = NULL;
-			iter->sent_time = now;
-			send_message(server_socket, iter->player, iter->message);
-			tmp->next = iter;
+			send_message(server_socket, iter->player, iter->message, &sent_messages);
+			free_list(iter);
+			no_acks++;
+			if (no_acks > NO_ACKS_BEFORE_NO_NET) fprintf(stderr, "Connection lost\n");
+			if (prev == NULL) iter = next;
+			continue;
 		}
 		prev = iter;
 		iter = iter->next;
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
 void run_threads() {
+	int i;
 
+	for (i = 0; i < NUMBER_OF_THREADS; i++) {
+		pthread_create(&th[i], NULL, respond, (void *) &thread_data);
+	}
 }
 
 /*
@@ -240,36 +273,20 @@ void run_threads() {
  * server_socket: socket to be used for receiving and sending messages
  * */
 void run_server(int server_socket) {
-	int sent_datagrams = 1; // TODO remove
-	pthread_t *th;
-	struct thread_data thread_data;
 
 	signal(SIGINT, exit_handler);
 	init_server(server_socket);
 
-//	TODO create and run consumer threads - one general and it starts new thread for each player
-	thread_data.server_socket = server_socket;
-	thread_data.games = &games;
-	thread_data.buffer = &buffer;
-	thread_data.sent_messages = &sent_messages;
-	thread_data.sem = &sem;
+	run_threads();
 
-//	TODO proper exit after Ctrl + C - frees, message to clients and so on
 	while (1) {
-		socklen_t client_addr_length;
-		struct sockaddr_in client_addr;
 		struct message received;
 
-		received = receive_message(server_socket, &client_addr, &client_addr_length);
+		received = receive_message(server_socket);
 		check_sent_messages(server_socket);
 		if (received.type != -1) {
-			add_message(&buffer, received);
+			add_message(&buffer, received, NULL);
 			sem_post(&sem);
-		}
-
-//		TODO remove
-		if (sent_datagrams < 0) {
-			break;
 		}
 	}
 }

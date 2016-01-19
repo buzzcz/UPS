@@ -85,6 +85,8 @@ struct thread_data {
 	struct list **buffer;
 	struct list **sent_messages;
 	sem_t *sem;
+	pthread_mutex_t *mutex;
+	int *no_ack;
 };
 
 #endif
