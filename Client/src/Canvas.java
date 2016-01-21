@@ -19,19 +19,32 @@ public class Canvas extends JPanel {
 	 */
 	private int wrongGuesses;
 
+	/******************************************************************************************************************/
+
+	/**
+	 * Constructor for canvas
+	 */
 	public Canvas() {
 		wrongGuesses = 0;
 	}
 
+	/**
+	 * Constructor for canvas
+	 * @param wrongGuesses number of wrong guesses
+	 */
 	public Canvas(int wrongGuesses) {
 		this.wrongGuesses = wrongGuesses;
 	}
 
+	/**
+	 * Adds wrong guess and repaints the canvas
+	 */
 	public void wrongGuess() {
 		wrongGuesses++;
 		repaint();
 	}
 
+	@Override
 	public void paint(Graphics g1) {
 		g = (Graphics2D) g1;
 		draw(wrongGuesses);
@@ -39,6 +52,8 @@ public class Canvas extends JPanel {
 
 	/**
 	 * Redraws a hangman according to a number of wrong guessed letters
+	 *
+	 * @param wrongGuesses number of wrong guessed letters
 	 */
 	public void draw(int wrongGuesses) {
 		g.clearRect(0, 0, getWidth(), getHeight());

@@ -51,7 +51,7 @@ public class Window extends JFrame {
 	/******************************************************************************************************************/
 
 	/**
-	 * Cunstructor for a window
+	 * Constructor for a window
 	 *
 	 * @param host host address
 	 * @param port port of socket
@@ -93,7 +93,7 @@ public class Window extends JFrame {
 		int result = JOptionPane.showOptionDialog(Window.this, "Do you want to exit the game?", "Exit game",
 				JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 		if (result == JOptionPane.YES_OPTION) {
-//		    TODO hot to exit game - send leaving info
+//		    TODO how to exit game - when and how to stop threads
 			receiver.interrupt();
 			consumer.interrupt();
 			if (game != null) {
@@ -185,12 +185,12 @@ public class Window extends JFrame {
 		getContentPane().add(statusLabel);
 		getContentPane().add(new JSeparator(SwingConstants.HORIZONTAL));
 
-		canvas = new Canvas();
+		canvas = new Canvas(11);
 		getContentPane().add(canvas);
-
 		getContentPane().add(new JSeparator(SwingConstants.HORIZONTAL));
 
-		guessedWordLabel = new JLabel(" ");
+		guessedWordLabel = new JLabel("No word");
+		guessedWordLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 		getContentPane().add(guessedWordLabel);
 
 		canvas.setPreferredSize(new Dimension(getWidth(), getHeight() - statusLabel.getHeight() - guessedWordLabel
@@ -210,6 +210,20 @@ public class Window extends JFrame {
 
 					}
 				}
+				if (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
+					while (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
+						guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN,
+								guessedWordLabel.getFont().getSize() - 1));
+					}
+				} else if (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth
+						() * 0.9) {
+					while (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth
+							() * 0.9) {
+						guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN,
+								guessedWordLabel.getFont().getSize() + 1));
+
+					}
+				}
 			}
 		});
 	}
@@ -226,7 +240,7 @@ public class Window extends JFrame {
 					String data = e.getKeyChar() + "";
 					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 17, data.length(), data.toUpperCase
 							());
-					game.setLastMessage(m);
+					udp.sendMessage(m, receiver.getSentMessages());
 					lastGuessed = data.charAt(0);
 					setStatusLabelText("You guessed " + lastGuessed);
 					game.setMyMove(false);

@@ -4,12 +4,28 @@ import javax.swing.*;
  * @author Jaroslav Klaus
  */
 public class ProcessMessage extends Thread {
+	/**
+	 * Connection
+	 */
 	Connection udp;
+	/**
+	 * Thread that receives messages
+	 */
 	private Receiver receiver;
+	/**
+	 * Window of the game
+	 */
 	private Window window;
 
 	/******************************************************************************************************************/
 
+	/**
+	 * Constructor for a thread that processes messages
+	 *
+	 * @param udp connection
+	 * @param receiver thread that receives messages
+	 * @param window window of the game
+	 */
 	public ProcessMessage(Connection udp, Receiver receiver, Window window) {
 		this.udp = udp;
 		this.receiver = receiver;
@@ -17,6 +33,9 @@ public class ProcessMessage extends Thread {
 		this.start();
 	}
 
+	/**
+	 * Run method of the thread. Gets message from a buffer and processes it
+	 */
 	@Override
 	public void run() {
 		Message received;
@@ -82,6 +101,11 @@ public class ProcessMessage extends Thread {
 		}
 	}
 
+	/**
+	 * Sends acknowledgement to a given packet number
+	 *
+	 * @param receivedNumber number that should be acknowledged
+	 */
 	private void sendAck(String receivedNumber) {
 		udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 2, receivedNumber.length(), receivedNumber),
 				receiver.getSentMessages());
@@ -143,10 +167,6 @@ public class ProcessMessage extends Thread {
 	private void respondType16() {
 		window.getGame().setMyMove(true);
 		window.setStatusLabelText("It's your move");
-		while (window.getGame().isMyMove()) {
-			yield();
-		}
-		udp.sendMessage(window.getGame().getLastMessage(), receiver.getSentMessages());
 	}
 
 	private void respondType17(Message received) {

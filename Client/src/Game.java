@@ -14,7 +14,7 @@ public class Game {
 	 */
 	private int playersCount;
 	/**
-	 * Number of letter in guessed word
+	 * Number of letters in guessed word
 	 */
 	private int guessedWord;
 	/**
@@ -29,10 +29,6 @@ public class Game {
 	 * If true then it's my move otherwise it's not
 	 */
 	private boolean myMove;
-	/**
-	 * Last sent message
-	 */
-	private Message lastMessage;
 
 	/******************************************************************************************************************/
 
@@ -46,9 +42,17 @@ public class Game {
 		state = 0;
 		guessedLetters = "";
 		myMove = false;
-		lastMessage = null;
 	}
 
+	/**
+	 * Constructor for a game
+	 *
+	 * @param state state of the game
+	 * @param playersCount number of players supposed to be in the game
+	 * @param guessedWord number of letters in guessed word
+	 * @param guessedLetters already guessed letters
+	 * @param wrongGuesses number of wrong guesses
+	 */
 	public Game(int state, int playersCount, int guessedWord, String guessedLetters, int wrongGuesses) {
 		this.state = state;
 		this.playersCount = playersCount;
@@ -56,7 +60,6 @@ public class Game {
 		this.guessedLetters = guessedLetters;
 		this.wrongGuesses = wrongGuesses;
 		myMove = false;
-		lastMessage = null;
 	}
 
 
@@ -121,24 +124,6 @@ public class Game {
 	 */
 	public String getGuessedLetters() {
 		return guessedLetters;
-	}
-
-	/**
-	 * Getter for last sent message
-	 *
-	 * @return last sent message
-	 */
-	public Message getLastMessage() {
-		return lastMessage;
-	}
-
-	/**
-	 * Setter for last sent message
-	 *
-	 * @param lastMessage last sent message
-	 */
-	public void setLastMessage(Message lastMessage) {
-		this.lastMessage = lastMessage;
 	}
 
 	/**

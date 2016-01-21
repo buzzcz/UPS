@@ -14,11 +14,11 @@ public class Connection {
 	 */
 	private DatagramSocket socket;
 	/**
-	 * Host address of the socket
+	 * Address of the server
 	 */
 	private InetAddress host;
 	/**
-	 * Port of the socket
+	 * Port of the server
 	 */
 	private int port;
 
@@ -31,8 +31,14 @@ public class Connection {
 	 */
 	private int numberOfReceivedDatagrams;
 
+	/**
+	 * Constant representing number of milliseconds to wait in receive
+	 */
 	static final int TIMEOUT = 5000;
-	private final int BUFFER_SIZE = 1024;
+	/**
+	 * Constant for size of buffer receiving message
+	 */
+	private final int BUFFER_SIZE = 65000;
 
 	/******************************************************************************************************************/
 
@@ -69,9 +75,10 @@ public class Connection {
 	}
 
 	/**
-	 * Sends a datagram with specified message
+	 * Sends a datagram with specified message and adds it to the list of sent messages
 	 *
-	 * @param message message to be sent
+	 * @param message      message to be sent
+	 * @param sentMessages list of sent messages
 	 */
 	public void sendMessage(Message message, ArrayList<Message> sentMessages) {
 		DatagramPacket send = new DatagramPacket(message.getMessageByte(), message.getMessageByte().length, host,
@@ -91,7 +98,8 @@ public class Connection {
 	/**
 	 * Receives a datagram with a message
 	 *
-	 * @return received message
+	 * @return received message if OK, message with type -1 if parsing failed
+	 * @throws IOException if timeout occurs
 	 */
 	public Message receiveMessage() throws IOException {
 		byte[] buffer = new byte[BUFFER_SIZE];
@@ -105,19 +113,19 @@ public class Connection {
 
 		try {
 			index = s.indexOf(';');
-			if (index == -1) throw new NumberFormatException("Number not found");
+			if (index == -1) throw new NumberFormatException();
 			number = Integer.parseInt(s.substring(0, index));
 			s = s.substring(index + 1);
 			index = s.indexOf(';');
-			if (index == -1) throw new NumberFormatException("Type not found");
+			if (index == -1) throw new NumberFormatException();
 			type = Integer.parseInt(s.substring(0, index));
 			s = s.substring(index + 1);
 			index = s.indexOf(';');
-			if (index == -1) throw new NumberFormatException("Checksum not found");
+			if (index == -1) throw new NumberFormatException();
 			checksum = Integer.parseInt(s.substring(0, index));
 			s = s.substring(index + 1);
 			index = s.indexOf(';');
-			if (index == -1) throw new NumberFormatException("Data size not found");
+			if (index == -1) throw new NumberFormatException();
 			dataSize = Integer.parseInt(s.substring(0, index));
 			s = s.substring(index + 1);
 			data = s;

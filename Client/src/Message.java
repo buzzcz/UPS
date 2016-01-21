@@ -24,6 +24,9 @@ public class Message {
 	 * Data in datagram
 	 */
 	private String data;
+	/**
+	 * Timestamp
+	 */
 	private long sentTime;
 
 	/******************************************************************************************************************/

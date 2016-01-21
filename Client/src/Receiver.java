@@ -16,18 +16,26 @@ public class Receiver extends Thread {
 	 * Buffer for received messages
 	 */
 	private ArrayList<Message> buffer;
+	/**
+	 * Buffer for sent messages
+	 */
 	private ArrayList<Message> sentMessages;
 	/**
 	 * Semaphore indicating that a buffer has a message in it
 	 */
 	private Semaphore m;
 
+	/**
+	 * Constant representing number of milliseconds to wait for acknowledgement before sending the message again
+	 */
 	private static int TIME_TO_ACK = 5000;
 
 	/******************************************************************************************************************/
 
 	/**
 	 * Constructor for a thread that receives messages
+	 *
+	 * @param udp connection
 	 */
 	public Receiver(Connection udp) {
 		this.udp = udp;
@@ -59,12 +67,15 @@ public class Receiver extends Thread {
 		}
 	}
 
+	/**
+	 * Checks buffer of sent messages for old ones and sends them again
+	 */
 	private void checkSentMessages() {
 		for (int i = 0; i < sentMessages.size(); i++) {
 			long now = new Date().getTime();
 			if (now - sentMessages.get(i).getSentTime() > TIME_TO_ACK) {
 				if (now - sentMessages.get(i).getSentTime() > 10 * TIME_TO_ACK) {
-					System.err.println("Connection lost with server");
+					System.err.println("Connection with server lost");
 				} else if (now - sentMessages.get(i).getSentTime() > 3 * TIME_TO_ACK) {
 					udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 1, 0, ""), sentMessages);
 				}
@@ -84,11 +95,15 @@ public class Receiver extends Thread {
 			m.acquire();
 			return buffer.remove(0);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
 			return null;
 		}
 	}
 
+	/**
+	 * Searches sent messages and removes the one that this acknowledgement is for
+	 *
+	 * @param ack acknowledgement
+	 */
 	public void ackMessage(Message ack) {
 		for (int i = 0; i < sentMessages.size(); i++) {
 			if (sentMessages.get(i).getNumber() == Integer.parseInt(ack.getData())) {
@@ -98,6 +113,11 @@ public class Receiver extends Thread {
 		}
 	}
 
+	/**
+	 * Getter for sent messages
+	 *
+	 * @return list of sent messages
+	 */
 	public ArrayList<Message> getSentMessages() {
 		return sentMessages;
 	}
