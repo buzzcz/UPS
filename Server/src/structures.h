@@ -6,6 +6,18 @@
 #include <semaphore.h>
 
 /*
+ * Constant for size of the datagram "header"
+ * */
+#define PEEK_SIZE 30
+/*
+ * Constant for timeout before recvfrom stops waiting for data
+ * */
+#define TIMEOUT 5
+#define TIME_TO_ACK 5000
+#define NUMBER_OF_THREADS 3
+#define BUFFER_SIZE 65000
+
+/*
  * Structure for messages
  * */
 struct message {
@@ -44,6 +56,7 @@ struct player {
 	int sent_datagrams;
 	/*Number of received datagrams from a player*/
 	int received_datagrams;
+	clock_t last_received;
 	/*Number of opponents player wants to play*/
 	int opponents;
 	/*Id of game player is in*/
@@ -86,7 +99,6 @@ struct thread_data {
 	struct list **sent_messages;
 	sem_t *sem;
 	pthread_mutex_t *mutex;
-	int *no_ack;
 };
 
 #endif

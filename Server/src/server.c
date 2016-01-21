@@ -18,7 +18,6 @@ struct game *games;
 struct list *buffer, *sent_messages;
 sem_t sem;
 pthread_mutex_t mutex;
-int no_acks;
 
 /*
  * Creates new server socket and sets server attributes
@@ -90,75 +89,14 @@ void init_server(int server_socket) {
 	buffer = NULL;
 	sent_messages = NULL;
 	sem_init(&sem, 0, 0);
+	pthread_mutex_init(&mutex, NULL);
 
 	thread_data.server_socket = server_socket;
 	thread_data.games = &games;
 	thread_data.buffer = &buffer;
 	thread_data.sent_messages = &sent_messages;
 	thread_data.sem = &sem;
-	pthread_mutex_init(&mutex, NULL);
-	thread_data.no_ack = &no_acks;
-
-	no_acks = 0;
-}
-
-/*
- * Peeks at the message and returns the size of the data
- *
- *
- * server_socket: server socket to be used for receiving a message
- *
- * client_addr: saves the client's attributes
- *
- * client_addr_length: length of client's attributes
- * */
-void peek_message(int *to_read, int server_socket, struct sockaddr_in *client_addr, socklen_t *client_addr_length) {
-	char *text, *tmp;
-
-	text = malloc(PEEK_SIZE);
-	*client_addr_length = sizeof(client_addr);
-	recvfrom(server_socket, text, PEEK_SIZE, MSG_PEEK, (struct sockaddr *) client_addr, client_addr_length);
-
-	if (errno == EWOULDBLOCK || errno == EAGAIN) {
-		to_read[0] = -1;
-		to_read[1] = -1;
-	} else {
-		*client_addr_length = sizeof(client_addr);
-
-		tmp = strtok(text, ";");
-		if (tmp != NULL) to_read[0] = (int) (strlen(tmp) + 1);
-		else {
-			to_read[0] = -1;
-			to_read[1] = -1;
-			return;
-		}
-		tmp = strtok(NULL, ";");
-		if (tmp != NULL) to_read[0] += strlen(tmp) + 1;
-		else {
-			to_read[0] = -1;
-			to_read[1] = -1;
-			return;
-		}
-		tmp = strtok(NULL, ";");
-		if (tmp != NULL) to_read[0] += strlen(tmp) + 1;
-		else {
-			to_read[0] = -1;
-			to_read[1] = -1;
-			return;
-		}
-		tmp = strtok(NULL, ";");
-		if (tmp != NULL) to_read[0] += strlen(tmp) + 1;
-		else {
-			to_read[0] = -1;
-			to_read[1] = -1;
-			return;
-		}
-
-		to_read[1] = atoi(tmp);
-		to_read[0] += to_read[1];
-	}
-
-	free(text);
+	thread_data.mutex = &mutex;
 }
 
 /*
@@ -177,57 +115,69 @@ void peek_message(int *to_read, int server_socket, struct sockaddr_in *client_ad
 struct message receive_message(int server_socket) {
 	struct sockaddr_in client_addr;
 	socklen_t client_addr_length;
-	int read_bytes, *to_read;
-	char *received, *tmp;
+	int read_bytes;
+	char received[BUFFER_SIZE], *tmp;
 	struct message m;
 
-	to_read = malloc(2 * sizeof(int));
-	peek_message(to_read, server_socket, &client_addr, &client_addr_length);
-	read_bytes = to_read[0];
-	m.data_size = to_read[1];
-	free(to_read);
-	if (read_bytes == -1) {
-		m.type = -1;
-		return m;
-	}
-
-	received = malloc((size_t) read_bytes + 1);
-	client_addr_length = sizeof(client_addr);
+	read_bytes = BUFFER_SIZE;
 	read_bytes = (int) recvfrom(server_socket, received, (size_t) read_bytes, 0, (struct sockaddr *) &client_addr,
 	                            &client_addr_length);
-	client_addr_length = sizeof(client_addr);
-	received[read_bytes] = '\0';
 
-	tmp = strtok(received, ";");
-	m.number = atoi(tmp);
-	tmp = strtok(NULL, ";");
-	m.type = atoi(tmp);
-	tmp = strtok(NULL, ";");
-	m.checksum = atoi(tmp);
-	strtok(NULL, ";");
-	tmp = strtok(NULL, ";");
-	if (tmp != NULL) {
-		char *nick;
+	if (read_bytes == -1 && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+		m.type = -1;
+		return m;
+	} else {
+		client_addr_length = sizeof(client_addr);
+		received[read_bytes] = '\0';
+		printf("Client sent: %s\n", received);
 
-		nick = strtok(NULL, ",");
-		if (nick != NULL) {
-			tmp = strtok(NULL, ",");
-			m.data_size -= strlen(nick) + 1;
-			m.nick = malloc(strlen(nick) * sizeof(char));
-			strcpy(m.nick, nick);
-			m.data = malloc(m.data_size * sizeof(char));
-		} else {
-			m.nick = NULL;
+		tmp = strtok(received, ";,");
+		if (tmp == NULL) {
+			m.type = -2;
+			return m;
 		}
-		strcpy(m.data, tmp);
+		m.number = atoi(tmp);
+		tmp = strtok(NULL, ";,");
+		if (tmp == NULL) {
+			m.type = -2;
+			return m;
+		}
+		m.type = atoi(tmp);
+		tmp = strtok(NULL, ";,");
+		if (tmp == NULL) {
+			m.type = -2;
+			return m;
+		}
+		m.checksum = atoi(tmp);
+		tmp = strtok(NULL, ";,");
+		if (tmp == NULL) {
+			m.type = -2;
+			return m;
+		}
+		m.data_size = atoi(tmp);
+		tmp = strtok(NULL, ";,");
+		if (tmp == NULL) {
+			m.type = -2;
+			return m;
+		}
+		m.nick = malloc(strlen(tmp) * sizeof(char));
+		strcpy(m.nick, tmp);
+		m.data_size -= strlen(tmp) + 1;
+		tmp = strtok(NULL, ";,");
+		if (tmp == NULL) {
+			m.type = -2;
+			return m;
+		}
+		if (m.data_size > 0) {
+			m.data = malloc(m.data_size * sizeof(char));
+			strcpy(m.data, tmp);
+		} else m.data = NULL;
+		m.client_addr = client_addr;
+		printf("Addr: %d, Port: %d\n", client_addr.sin_addr, client_addr.sin_port);
+		m.client_addr_length = client_addr_length;
+
+		return m;
 	}
-	else m.data = NULL;
-	m.client_addr = client_addr;
-	m.client_addr_length = client_addr_length;
-
-	free(received);
-
-	return m;
 }
 
 void check_sent_messages(int server_socket) {
@@ -242,13 +192,24 @@ void check_sent_messages(int server_socket) {
 
 		now = clock();
 		if (now - iter->sent_time > TIME_TO_ACK) {
+			if (now - iter->sent_time > 10 * TIME_TO_ACK) {
+				fprintf(stderr, "Connection lost with %s\n", iter->player->name);
+//				TODO remove player
+			} else if (now - iter->sent_time > 3 * TIME_TO_ACK) {
+				struct message m;
+
+				m.number = iter->player->sent_datagrams++;
+				m.type = 1;
+				m.data_size = 0;
+				m.data = NULL;
+				calculate_checksum(&m);
+				send_message(server_socket, iter->player, m, &sent_messages);
+			}
 			if (prev != NULL) prev->next = iter->next;
 			else next = iter->next;
 			iter->next = NULL;
 			send_message(server_socket, iter->player, iter->message, &sent_messages);
 			free_list(iter);
-			no_acks++;
-			if (no_acks > NO_ACKS_BEFORE_NO_NET) fprintf(stderr, "Connection lost\n");
 			if (prev == NULL) iter = next;
 			continue;
 		}
@@ -284,7 +245,11 @@ void run_server(int server_socket) {
 
 		received = receive_message(server_socket);
 		check_sent_messages(server_socket);
-		if (received.type != -1) {
+		if (received.type == -1) {
+			fprintf(stderr, "Timeout\n");
+		} else if (received.type == -2) {
+			fprintf(stderr, "Can't parse message\n");
+		} else {
 			add_message(&buffer, received, NULL);
 			sem_post(&sem);
 		}

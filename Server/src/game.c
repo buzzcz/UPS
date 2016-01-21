@@ -45,34 +45,6 @@ void free_player(struct player *player) {
 }
 
 /*
- * Checks if the nickname is already used in a game
- *
- *
- * games: list of games
- *
- * name: name to be checked
- *
- *
- * return: 0 if it was found, 1 otherwise
- * */
-int is_already_logged(struct game **games, char *name) {
-	struct game *iter;
-
-	iter = *games;
-	while (iter != NULL) {
-		int i;
-
-		for (i = 0; i < iter->players_count; i++) {
-			if (iter->players[i] != NULL && strcmp(iter->players[i]->name, name) == 0) {
-				return 0;
-			}
-		}
-		iter = iter->next;
-	}
-	return 1;
-}
-
-/*
  * Finds a player in a game
  *
  *
@@ -208,7 +180,7 @@ void create_game(struct game **games, int players_count, struct player *player) 
  *
  * player: player to be added to a game
  * */
-int add_player_to_game(struct game **games, struct player *player) {
+struct game *add_player_to_game(struct game **games, struct player *player) {
 	struct game *iter;
 
 	iter = *games;
@@ -225,13 +197,14 @@ int add_player_to_game(struct game **games, struct player *player) {
 			}
 			if (i == iter->players_count) {
 				iter->state = 1;
+				return iter;
 			}
-			return iter->id;
+			return NULL;
 		}
 		iter = iter->next;
 	}
 	create_game(games, player->opponents + 1, player);
-	return -1;
+	return NULL;
 }
 
 /*
