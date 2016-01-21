@@ -120,6 +120,7 @@ struct message receive_message(int server_socket) {
 	struct message m;
 
 	read_bytes = BUFFER_SIZE;
+	client_addr_length = sizeof(client_addr);
 	read_bytes = (int) recvfrom(server_socket, received, (size_t) read_bytes, 0, (struct sockaddr *) &client_addr,
 	                            &client_addr_length);
 
@@ -127,7 +128,6 @@ struct message receive_message(int server_socket) {
 		m.type = -1;
 		return m;
 	} else {
-		client_addr_length = sizeof(client_addr);
 		received[read_bytes] = '\0';
 		printf("Client sent: %s\n", received);
 
@@ -173,7 +173,6 @@ struct message receive_message(int server_socket) {
 			strcpy(m.data, tmp);
 		} else m.data = NULL;
 		m.client_addr = client_addr;
-		printf("Addr: %d, Port: %d\n", client_addr.sin_addr, client_addr.sin_port);
 		m.client_addr_length = client_addr_length;
 
 		return m;

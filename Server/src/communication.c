@@ -454,7 +454,6 @@ void *respond(void *thread_data) {
 		sem_wait(data->sem);
 		pthread_mutex_lock(data->mutex);
 		received = get_message(data->buffer);
-		printf("%d", received->type);
 
 		if (check_checksum(received) == 1) {
 			player = find_player(games, received->nick);
