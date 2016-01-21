@@ -28,9 +28,10 @@ public class ProcessMessage extends Thread {
 				sendAck(String.valueOf(received.getNumber()));
 
 				switch (received.getType()) {
+					case 1: //Ping
+						break;
 					case 2: // Ack
 						receiver.ackMessage(received);
-						receiver.zeroNoAck();
 						break;
 					case 6: // Answer to connect request
 						respondType6(received);
@@ -72,6 +73,7 @@ public class ProcessMessage extends Thread {
 						respondType22(received);
 						break;
 					default:
+						System.err.println("Unknown type");
 						break;
 				}
 			} else if (received.getNumber() <= udp.getNumberOfReceivedDatagrams()) {

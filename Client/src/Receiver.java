@@ -22,10 +22,7 @@ public class Receiver extends Thread {
 	 */
 	private Semaphore m;
 
-	int noAck;
-
 	private static int TIME_TO_ACK = 5000;
-	private static int NO_ACKS_BEFORE_NO_NET = 3;
 
 	/******************************************************************************************************************/
 
@@ -37,7 +34,6 @@ public class Receiver extends Thread {
 		buffer = new ArrayList<Message>();
 		sentMessages = new ArrayList<Message>();
 		m = new Semaphore(0);
-		noAck = 0;
 		this.start();
 	}
 
@@ -53,8 +49,11 @@ public class Receiver extends Thread {
 				if (received.getType() != -1) {
 					buffer.add(received);
 					m.release();
+				} else {
+					System.err.println("Can't parse message");
 				}
 			} catch (IOException e) {
+				System.err.println("Timeout");
 				checkSentMessages();
 			}
 		}
@@ -64,10 +63,13 @@ public class Receiver extends Thread {
 		for (int i = 0; i < sentMessages.size(); i++) {
 			long now = new Date().getTime();
 			if (now - sentMessages.get(i).getSentTime() > TIME_TO_ACK) {
+				if (now - sentMessages.get(i).getSentTime() > 10 * TIME_TO_ACK) {
+					System.err.println("Connection lost with server");
+				} else if (now - sentMessages.get(i).getSentTime() > 3 * TIME_TO_ACK) {
+					udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 1, 0, ""), sentMessages);
+				}
 				Message m = sentMessages.remove(i);
 				udp.sendMessage(m, sentMessages);
-				noAck++;
-				if (noAck > NO_ACKS_BEFORE_NO_NET) System.err.println("Connection lost");
 			}
 		}
 	}
@@ -94,10 +96,6 @@ public class Receiver extends Thread {
 				break;
 			}
 		}
-	}
-
-	public void zeroNoAck() {
-		noAck = 0;
 	}
 
 	public ArrayList<Message> getSentMessages() {

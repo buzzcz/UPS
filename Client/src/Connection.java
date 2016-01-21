@@ -124,7 +124,7 @@ public class Connection {
 
 			return new Message(number, type, checksum, dataSize, data);
 		} catch (NumberFormatException e) {
-			return new Message(-1, -1, -1, "");
+			return new Message(-1, -1, -1, -1, "");
 		}
 	}
 
