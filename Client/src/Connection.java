@@ -128,7 +128,7 @@ public class Connection {
 			if (index == -1) throw new NumberFormatException();
 			dataSize = Integer.parseInt(s.substring(0, index));
 			s = s.substring(index + 1);
-			data = s;
+			data = s.substring(0, dataSize);
 
 			return new Message(number, type, checksum, dataSize, data);
 		} catch (NumberFormatException e) {

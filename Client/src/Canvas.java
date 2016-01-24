@@ -37,6 +37,14 @@ public class Canvas extends JPanel {
 	}
 
 	/**
+	 * Setter for wrong guesses
+	 * @param wrongGuesses number of wrong guesses
+	 */
+	public void setWrongGuesses(int wrongGuesses) {
+		this.wrongGuesses = wrongGuesses;
+	}
+
+	/**
 	 * Adds wrong guess and repaints the canvas
 	 */
 	public void wrongGuess() {

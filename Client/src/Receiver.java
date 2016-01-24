@@ -11,6 +11,10 @@ public class Receiver extends Thread {
 	 * Connection
 	 */
 	private Connection udp;
+	/**
+	 * Window of the game
+	 */
+	private Window window;
 
 	/**
 	 * Buffer for received messages
@@ -35,10 +39,12 @@ public class Receiver extends Thread {
 	/**
 	 * Constructor for a thread that receives messages
 	 *
-	 * @param udp connection
+	 * @param udp    connection
+	 * @param window window of the game
 	 */
-	public Receiver(Connection udp) {
+	public Receiver(Connection udp, Window window) {
 		this.udp = udp;
+		this.window = window;
 		buffer = new ArrayList<Message>();
 		sentMessages = new ArrayList<Message>();
 		m = new Semaphore(0);
@@ -61,7 +67,6 @@ public class Receiver extends Thread {
 					System.err.println("Can't parse message");
 				}
 			} catch (IOException e) {
-				System.err.println("Timeout");
 				checkSentMessages();
 			}
 		}
@@ -77,9 +82,8 @@ public class Receiver extends Thread {
 				if (now - sentMessages.get(i).getSentTime() > 10 * TIME_TO_ACK) {
 					System.err.println("Connection with server lost");
 				} else if (now - sentMessages.get(i).getSentTime() > 3 * TIME_TO_ACK) {
-					udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 1, 0, ""), sentMessages);
-				}
-				Message m = sentMessages.remove(i);
+					udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 1, window.getNick().length(), window.getNick()), sentMessages);
+				} Message m = sentMessages.remove(i);
 				udp.sendMessage(m, sentMessages);
 			}
 		}

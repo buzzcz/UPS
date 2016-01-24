@@ -22,9 +22,9 @@ public class ProcessMessage extends Thread {
 	/**
 	 * Constructor for a thread that processes messages
 	 *
-	 * @param udp connection
+	 * @param udp      connection
 	 * @param receiver thread that receives messages
-	 * @param window window of the game
+	 * @param window   window of the game
 	 */
 	public ProcessMessage(Connection udp, Receiver receiver, Window window) {
 		this.udp = udp;
@@ -44,7 +44,7 @@ public class ProcessMessage extends Thread {
 			received = receiver.getMessageFromBuffer();
 			if (received.checkChecksum() && received.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
 				udp.increaseNumberOfReceivedDatagrams();
-				sendAck(String.valueOf(received.getNumber()));
+				if (received.getType() != 2) sendAck(String.valueOf(received.getNumber()));
 
 				switch (received.getType()) {
 					case 1: //Ping
@@ -107,15 +107,15 @@ public class ProcessMessage extends Thread {
 	 * @param receivedNumber number that should be acknowledged
 	 */
 	private void sendAck(String receivedNumber) {
-		udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 2, receivedNumber.length(), receivedNumber),
-				receiver.getSentMessages());
+		udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 2, window.getNick().length() + 1 +
+				receivedNumber.length(), window.getNick() + "," + receivedNumber), receiver.getSentMessages());
 	}
 
 	private void respondType6(Message received) {
 		int data = Integer.parseInt(received.getData());
 		if (data == 0) {
 			window.setGame(new Game(window.getOpponents() + 1));
-			window.setStatusLabelText("Connected");
+			window.setStatusLabelText("Connected, waiting for other players");
 		} else if (data == 1) {
 			JOptionPane.showMessageDialog(window, "Player is already playing and is online", "Connection failed",
 					JOptionPane.ERROR_MESSAGE);
@@ -133,6 +133,7 @@ public class ProcessMessage extends Thread {
 		} else {
 			window.setGame(new Game(Integer.parseInt(data[0]), Integer.parseInt(data[1]), Integer.parseInt(data[2]),
 					data[3], Integer.parseInt(data[4])));
+			window.getCanvas().setWrongGuesses(Integer.parseInt(data[4]));
 		}
 	}
 
@@ -141,6 +142,8 @@ public class ProcessMessage extends Thread {
 		for (int i = 0; i < Integer.parseInt(received.getData()); i++) {
 			word += "_";
 		}
+		window.getCanvas().setWrongGuesses(0);
+		window.setStatusLabelText("Start of the game");
 		window.setGuessedWordLabelText(word);
 	}
 

@@ -1,6 +1,8 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 /**
  * @author Jaroslav Klaus
@@ -59,7 +61,7 @@ public class Window extends JFrame {
 	public Window(String host, int port) {
 		initWindow();
 		udp = new Connection(host, port);
-		receiver = new Receiver(udp);
+		receiver = new Receiver(udp, this);
 		consumer = new ProcessMessage(udp, receiver, this);
 		game = null;
 		nick = null;
@@ -129,7 +131,7 @@ public class Window extends JFrame {
 				if (option == JOptionPane.OK_OPTION) {
 					nick = nickField.getText();
 					opponents = (Integer) opponentsSpinner.getValue();
-					Message m = new Message(udp.getNumberOfSentDatagrams(), 5, nick.length() +
+					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 5, nick.length() +
 							opponentsSpinner.getValue().toString().length() + 1, nick + "," +
 							opponentsSpinner.getValue().toString());
 					udp.sendMessage(m, receiver.getSentMessages());
@@ -147,7 +149,7 @@ public class Window extends JFrame {
 						.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 				if (result == JOptionPane.OK_OPTION) {
 					nick = nickField.getText();
-					Message m = new Message(udp.getNumberOfSentDatagrams(), 7, nick.length(), nick);
+					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 7, nick.length(), nick);
 					udp.sendMessage(m, receiver.getSentMessages());
 				}
 			}
@@ -198,34 +200,55 @@ public class Window extends JFrame {
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
-				if (statusLabel.getText().length() * statusLabel.getFont().getSize() > getWidth()) {
-					while (statusLabel.getText().length() * statusLabel.getFont().getSize() > getWidth()) {
-						statusLabel.setFont(new Font(statusLabel.getFont().getName(), Font.PLAIN, statusLabel.getFont
-								().getSize() - 1));
-					}
-				} else if (statusLabel.getText().length() * (statusLabel.getFont().getSize() + 1) < getWidth() * 0.9) {
-					while (statusLabel.getText().length() * (statusLabel.getFont().getSize() + 1) < getWidth() * 0.9) {
-						statusLabel.setFont(new Font(statusLabel.getFont().getName(), Font.PLAIN, statusLabel.getFont
-								().getSize() + 1));
-
-					}
-				}
-				if (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
-					while (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
-						guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN,
-								guessedWordLabel.getFont().getSize() - 1));
-					}
-				} else if (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth
-						() * 0.9) {
-					while (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth
-							() * 0.9) {
-						guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN,
-								guessedWordLabel.getFont().getSize() + 1));
-
-					}
-				}
+				resizeStatusLabel();
+				resizeGuessedWordLabel();
 			}
 		});
+		statusLabel.addPropertyChangeListener("text", new PropertyChangeListener() {
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				resizeStatusLabel();
+			}
+		});
+		guessedWordLabel.addPropertyChangeListener("text", new PropertyChangeListener() {
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				resizeGuessedWordLabel();
+			}
+		});
+	}
+
+	private void resizeStatusLabel() {
+		if (statusLabel.getText().length() * statusLabel.getFont().getSize() > getWidth()) {
+			while (statusLabel.getText().length() * statusLabel.getFont().getSize() > getWidth()) {
+				statusLabel.setFont(new Font(statusLabel.getFont().getName(), Font.PLAIN, statusLabel.getFont()
+						.getSize() - 1));
+			}
+		} else if (statusLabel.getText().length() * (statusLabel.getFont().getSize() + 1) < getWidth() * 0.9 &&
+				statusLabel.getFont().getSize() + 1 < 105) {
+			while (statusLabel.getText().length() * (statusLabel.getFont().getSize() + 1) < getWidth() * 0.9) {
+				statusLabel.setFont(new Font(statusLabel.getFont().getName(), Font.PLAIN, statusLabel.getFont()
+						.getSize() + 1));
+
+			}
+		}
+	}
+
+	private void resizeGuessedWordLabel() {
+		if (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
+			while (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
+				guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN, guessedWordLabel
+						.getFont().getSize() - 1));
+			}
+		} else if (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth() * 0.9
+				&& guessedWordLabel.getFont().getSize() + 1 < 105) {
+			while (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth() *
+					0.9) {
+				guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN, guessedWordLabel
+						.getFont().getSize() + 1));
+
+			}
+		}
 	}
 
 	/**
@@ -238,10 +261,10 @@ public class Window extends JFrame {
 				if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
 						.getKeyChar() == '\'' || e.getKeyChar() == ' ')) {
 					String data = e.getKeyChar() + "";
-					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 17, data.length(), data.toUpperCase
-							());
+					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 18, nick.length() + 1 + data.length()
+							, nick + "," + data.toUpperCase());
 					udp.sendMessage(m, receiver.getSentMessages());
-					lastGuessed = data.charAt(0);
+					lastGuessed = data.toUpperCase().charAt(0);
 					setStatusLabelText("You guessed " + lastGuessed);
 					game.setMyMove(false);
 				}
