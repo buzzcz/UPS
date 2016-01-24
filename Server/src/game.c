@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <time.h>
 #include "structures.h"
 #include "game.h"
 
@@ -83,6 +84,7 @@ char *get_word() {
 	FILE *words;
 	char *word;
 	int ch, lines, i;
+	size_t size;
 
 	words = fopen("words.txt", "r");
 	lines = 0;
@@ -92,12 +94,16 @@ char *get_word() {
 		ch = fgetc(words);
 	}
 
+	srand((unsigned int) time(NULL));
 	ch = rand() % lines;
 	rewind(words);
+	size = 100;
+	word = malloc(size * sizeof(char));
 	for (i = 0; i < ch; i++) {
-		getline(NULL, NULL, words);
+		getline(&word, &size, words);
 	}
-	getline(&word, NULL, words);
+	i = (int) getline(&word, &size, words);
+	word[i - 1] = '\0';
 
 	fclose(words);
 	return word;
@@ -120,14 +126,16 @@ char *check_guess(struct game *game, struct message received, size_t data_size) 
 	char *checked, guess;
 	int i;
 
-	strtok(received.data, ",");
-	guess = strtok(NULL, ",")[0];
+	guess = received.data[0];
 
 	checked = malloc(data_size + 1);
 	checked[data_size] = '\0';
 	for (i = 0; i < data_size; i++) {
-		if (game->guessed_word[i] == guess) checked[i] = 1;
-		else checked[i] = 0;
+		if (game->guessed_word[i] == guess) {
+			checked[i] = '1';
+			game->filled_word++;
+		}
+		else checked[i] = '0';
 	}
 
 	return checked;
@@ -151,8 +159,11 @@ void create_game(struct game **games, int players_count, struct player *player) 
 	new = malloc(sizeof(struct game));
 	new->state = 0;
 	new->players_count = players_count;
+	new->player_moved = 0;
 	new->players = malloc(players_count * sizeof(struct player *));
 	new->players[0] = player;
+	new->guessed_word = get_word();
+	new->filled_word = 0;
 	for (i = 1; i < players_count; i++) {
 		new->players[i] = NULL;
 	}
@@ -163,7 +174,6 @@ void create_game(struct game **games, int players_count, struct player *player) 
 		}
 		new->id = iter->id + 1;
 		new->players[0]->game = new->id;
-		new->guessed_word = get_word();
 		iter->next = new;
 	} else {
 		new->id = 0;
@@ -195,7 +205,7 @@ struct game *add_player_to_game(struct game **games, struct player *player) {
 					break;
 				}
 			}
-			if (i == iter->players_count) {
+			if (i == iter->players_count - 1) {
 				iter->state = 1;
 				return iter;
 			}

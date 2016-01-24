@@ -41,7 +41,7 @@ void ack_message(struct list **sent_messages, struct message *ack) {
 	while (iter != NULL) {
 		int ack_number = atoi(ack->data);
 
-		if (iter->message.number == ack_number && strcmp(iter->message.nick, ack->nick) == 0) {
+		if (iter->message.number == ack_number && strcmp(iter->player->name, ack->nick) == 0) {
 			if (prev != NULL) prev->next = iter->next;
 			else next = iter->next;
 			iter->next = NULL;

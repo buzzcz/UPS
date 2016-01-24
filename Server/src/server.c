@@ -71,7 +71,6 @@ void exit_handler(int signal) {
 		pthread_cancel(th[i]);
 	}
 	printf("Exiting...\n");
-	sleep(3);
 	exit(0);
 }
 
@@ -192,8 +191,15 @@ void check_sent_messages(int server_socket) {
 		now = clock();
 		if (now - iter->sent_time > TIME_TO_ACK) {
 			if (now - iter->sent_time > 10 * TIME_TO_ACK) {
-				fprintf(stderr, "Connection lost with %s\n", iter->player->name);
-//				TODO remove player
+				fprintf(stderr, "Connection with %s lost\n", iter->player->name);
+				if (prev != NULL) prev->next = iter->next;
+				else next = iter->next;
+				iter->next = NULL;
+				respond_type_10(server_socket, &games, iter->player, &sent_messages);
+				free_list(iter);
+				if (prev == NULL) iter = next;
+				else iter = prev->next;
+				continue;
 			} else if (now - iter->sent_time > 3 * TIME_TO_ACK) {
 				struct message m;
 
@@ -210,6 +216,7 @@ void check_sent_messages(int server_socket) {
 			send_message(server_socket, iter->player, iter->message, &sent_messages);
 			free_list(iter);
 			if (prev == NULL) iter = next;
+			else iter = prev->next;
 			continue;
 		}
 		prev = iter;
@@ -245,7 +252,6 @@ void run_server(int server_socket) {
 		received = receive_message(server_socket);
 		check_sent_messages(server_socket);
 		if (received.type == -1) {
-			fprintf(stderr, "Timeout\n");
 		} else if (received.type == -2) {
 			fprintf(stderr, "Can't parse message\n");
 		} else {
