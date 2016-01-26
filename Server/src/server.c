@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <errno.h>
-#include <time.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -13,11 +12,19 @@
 #include "server.h"
 #include "list.h"
 
+/*Consumer-like threads for processing messages*/
 pthread_t th[NUMBER_OF_THREADS];
+/*Data which threads need for processing messages*/
 struct thread_data thread_data;
+/*List of games*/
 struct game *games;
-struct list *buffer, *sent_messages;
+/*Buffer for received messages*/
+struct list *buffer;
+/*Buffer for sent messages*/
+struct list *sent_messages;
+/*Semaphore for indicating new message in buffer*/
 sem_t sem;
+/*Mutex for mutual exclusion when working with shared variables*/
 pthread_mutex_t mutex;
 
 /*
@@ -25,6 +32,10 @@ pthread_mutex_t mutex;
  *
  *
  * server_socket: server socket to be created
+ *
+ * addr: address to listen at
+ *
+ * port: port to listen at
  *
  *
  * return: server attributes
@@ -69,11 +80,20 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
 	}
 }
 
+/*
+ * Prints statistics
+ * */
 void print_stats() {
 	printf("\nReceived: %d\nUnparseable: %d\nSent: %d\nResent: %d\n\n", number_of_received, number_of_unparseable,
 	       number_of_sent, number_of_resent);
 }
 
+/*
+ * Stops threads and exits server
+ *
+ *
+ * signal: signal that killed it
+ * */
 void exit_handler(int signal) {
 	int i;
 
@@ -86,6 +106,12 @@ void exit_handler(int signal) {
 	exit(0);
 }
 
+/*
+ * Sets timeout to recvfrom and initializes global variables
+ *
+ *
+ * server_socket: server socket on which the timeout should be set
+ * */
 void init_server(int server_socket) {
 	struct timeval timeout;
 	timeout.tv_sec = TIMEOUT;
@@ -115,17 +141,13 @@ void init_server(int server_socket) {
 }
 
 /*
- * Receives a message from a client
+ * Receives a message from a client and tries to parse it
  *
  *
  * server_socket: server socket to be used for receiving a message
  *
- * client_addr: saves the client's attributes
  *
- * client_addr_length: length of client's attributes
- *
- *
- * return: received message
+ * return: received message or message with type -1 if timeout occurred or with type -2 if it was unparseable
  * */
 struct message receive_message(int server_socket) {
 	struct sockaddr_in client_addr;
@@ -195,6 +217,13 @@ struct message receive_message(int server_socket) {
 	}
 }
 
+/*
+ * Checks list of sent messages and resends the one that is there too long. It also ends game if the message is not
+ * acknowledged for a certain time
+ *
+ *
+ * server_socket: socket to be used for sending messages
+ * */
 void check_sent_messages(int server_socket) {
 	struct list *iter, *prev, *next;
 
@@ -203,9 +232,11 @@ void check_sent_messages(int server_socket) {
 	next = NULL;
 	pthread_mutex_lock(&mutex);
 	while (iter != NULL) {
-		clock_t now;
+		struct timespec time;
+		time_t now;
 
-		now = clock();
+		clock_gettime(CLOCK_REALTIME, &time);
+		now = time.tv_sec;
 		if (now - iter->sent_time > TIME_TO_ACK) {
 			if (now - iter->sent_time > 10 * TIME_TO_ACK) {
 				printf("Connection with %s lost, ending game\n", iter->player->name);
@@ -222,6 +253,7 @@ void check_sent_messages(int server_socket) {
 				continue;
 			} else if (now - iter->sent_time > 3 * TIME_TO_ACK) {
 				respond_type_8(server_socket, &games, iter->player, &sent_messages);
+				iter->player->state = 0;
 			}
 			if (prev != NULL) prev->next = iter->next;
 			else next = iter->next;
@@ -242,6 +274,9 @@ void check_sent_messages(int server_socket) {
 	pthread_mutex_unlock(&mutex);
 }
 
+/*
+ * Creates and starts consumer-like threads that process messages
+ * */
 void run_threads() {
 	int i;
 
@@ -251,7 +286,8 @@ void run_threads() {
 }
 
 /*
- * Method that runs the server's endless loop
+ * Method that runs the server's main loop. It reads a message or waits for timeout, checks sent messages, and puts
+ * received messages into buffer
  *
  *
  * server_socket: socket to be used for receiving and sending messages

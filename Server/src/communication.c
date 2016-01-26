@@ -30,6 +30,12 @@ int number_length(int number) {
 	else return 10;
 }
 
+/*
+ * Calculates checksum for a message
+ *
+ *
+ * m: message which checksum should be calculated
+ * */
 void calculate_checksum(struct message *m) {
 	int i;
 
@@ -40,6 +46,15 @@ void calculate_checksum(struct message *m) {
 	m->checksum = m->checksum % 256;
 }
 
+/*
+ * Checks checksum of a message
+ *
+ *
+ * received: message which checksum should be checked
+ *
+ *
+ * return: 1 if checksum is ok, 0 otherwise
+ * */
 int check_checksum(struct message *received) {
 	int i, checksum, size;
 	char *check;
@@ -73,10 +88,10 @@ int check_checksum(struct message *received) {
  *
  * return: acknowledgement message to the received message
  * */
-struct message create_ack(int *sent_datagrams, struct message received) {
+struct message create_ack(int sent_datagrams, struct message received) {
 	struct message ack;
 
-	ack.number = (*sent_datagrams)++;
+	ack.number = sent_datagrams;
 	ack.type = 1;
 	ack.data_size = number_length(received.number);
 	ack.data = malloc((size_t) ack.data_size + 1);
@@ -87,22 +102,24 @@ struct message create_ack(int *sent_datagrams, struct message received) {
 }
 
 /*
- * Sends message to a client
+ * Sends message to a client and adds it to the sent messages list
  *
  *
  * server_socket: server socket to be used for sending
  *
- * client_addr: client's attributes
+ * player: player to whom the message should be sent
  *
- * client_addr_length: client's attributes length
+ * m: message to be sent
  *
- * message: message to be sent
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ *
+ * new_time: indicates if new time should be stored in the sent messages list
  * */
 void send_message(int server_socket, struct player *player, struct message m, struct list **sent_messages,
                   int new_time) {
 	char *message;
 
-	message = malloc((size_t) (PEEK_SIZE + m.data_size));
+	message = malloc(BUFFER_SIZE);
 	sprintf(message, "%d;%d;%d;%d;%s", m.number, m.type, m.checksum, m.data_size, m.data);
 	printf("Server is sending: %s to %s\n", message, player->name);
 	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &(player->client_addr),
@@ -119,25 +136,36 @@ void send_message(int server_socket, struct player *player, struct message m, st
  *
  * server_socket: server socket to be used for sending
  *
- * received: received message to send acknowledgement to
- *
  * player: player to whom the acknowledgement should be sent
+ *
+ * received: received message to send acknowledgement to
  * */
 void send_ack(int server_socket, struct player *player, struct message received) {
 	struct message ack;
 	char *message;
 
-	ack = create_ack(&(player->sent_datagrams), received);
-	message = malloc((size_t) (PEEK_SIZE + ack.data_size));
+	ack = create_ack(player->sent_datagrams, received);
+	message = malloc(BUFFER_SIZE);
 	sprintf(message, "%d;%d;%d;%d;%s", ack.number, ack.type, ack.checksum, ack.data_size, ack.data);
 	printf("Server is sending: %s to %s\n", message, player->name);
 	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &(player->client_addr),
 	       player->client_addr_length);
+	number_of_sent++;
 
 	free(ack.data);
 	free(message);
 }
 
+/*
+ * Sends message to a player that a player with the same nick is already in game and is online
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * player: player to whom the acknowledgement should be sent
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ * */
 void respond_type_3_0(int server_socket, struct player *player, struct list **sent_messages) {
 	struct message m;
 
@@ -149,6 +177,16 @@ void respond_type_3_0(int server_socket, struct player *player, struct list **se
 	send_message(server_socket, player, m, sent_messages, 1);
 }
 
+/*
+ * Sends message to a player that a player with the same nick is already in game but is disconnected
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * player: player to whom the acknowledgement should be sent
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ * */
 void respond_type_3_2(int server_socket, struct player *player, struct list **sent_messages) {
 	struct message m;
 
@@ -160,6 +198,18 @@ void respond_type_3_2(int server_socket, struct player *player, struct list **se
 	send_message(server_socket, player, m, sent_messages, 1);
 }
 
+/*
+ * Sends message to a player that it is his turn and to others in game whose turn it is
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * game: game in which a turn notifications should be sent
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ *
+ * next: indicates if it is next player's turn or if the same one's
+ * */
 void send_your_move(int server_socket, struct game *game, struct list **sent_messages, int next) {
 	struct message m;
 	int i;
@@ -196,6 +246,16 @@ void send_your_move(int server_socket, struct game *game, struct list **sent_mes
 	}
 }
 
+/*
+ * Sends message to players that the game should start
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * game: a game which starts
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ * */
 void send_start(int server_socket, struct game *game, struct list **sent_messages) {
 	struct message m;
 	int i;
@@ -215,6 +275,20 @@ void send_start(int server_socket, struct game *game, struct list **sent_message
 	send_your_move(server_socket, game, sent_messages, 0);
 }
 
+/*
+ * Sends message to a player if he has been connected to a game or not
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * player: player to whom the acknowledgement should be sent
+ *
+ * games: list of games
+ *
+ * received: received message
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ * */
 void respond_type_3(int server_socket, struct player *player, struct game **games, struct message received,
                     struct list **sent_messages) {
 	if (player == NULL) {
@@ -261,6 +335,8 @@ void respond_type_3(int server_socket, struct player *player, struct game **game
  * games: list of games
  *
  * player: reconnecting player
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
  * */
 void respond_type_5(int server_socket, struct game **games, struct player *player, struct list **sent_messages) {
 	struct message message;
@@ -323,6 +399,8 @@ void respond_type_5(int server_socket, struct game **games, struct player *playe
  * games: list of games
  *
  * player: disconnecting player
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
  * */
 void respond_type_8(int server_socket, struct game **games, struct player *player, struct list **sent_messages) {
 	struct message message;
@@ -350,6 +428,20 @@ void respond_type_8(int server_socket, struct game **games, struct player *playe
 	}
 }
 
+/*
+ * Sends a win message to a player and notification about a winner to others
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * player: player who won
+ *
+ * games: list of games
+ *
+ * game: a game in which a player has won
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ * */
 void send_win(int server_socket, struct player *player, struct game **games, struct game *game,
               struct list **sent_messages) {
 	struct message message;
@@ -377,6 +469,18 @@ void send_win(int server_socket, struct player *player, struct game **games, str
 	remove_game(games, game->id);
 }
 
+/*
+ * Sends a lose message to a player and notification about a loser to others
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * player: player who lost
+ *
+ * game: game in which a player has lost
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ * */
 void send_lose(int server_socket, struct player *player, struct game *game, struct list **sent_messages) {
 	struct message message;
 	int i;
@@ -404,7 +508,8 @@ void send_lose(int server_socket, struct player *player, struct game *game, stru
 }
 
 /*
- * Sends a message with revealed positions to a player and notification about a move to other players in a game
+ * Sends a message with revealed positions to a player and notification about a move to other players in a game.
+ * Also send a win, lose and / or next turn messages
  *
  *
  * server_socket: server socket to be used for sending
@@ -412,6 +517,8 @@ void send_lose(int server_socket, struct player *player, struct game *game, stru
  * games: list of games
  *
  * player: player who made a move
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
  *
  * received: message from the player with the move
  * */
@@ -445,7 +552,10 @@ void respond_type_16(int server_socket, struct game **games, struct player *play
 		}
 	}
 
-	if (strchr(reply, '1') == NULL) player->wrong_guesses++;
+	if (strchr(reply, '1') == NULL) {
+		player->wrong_guesses++;
+		i = 1;
+	} else i = 0;
 
 	free(reply);
 	free(message.data);
@@ -456,12 +566,13 @@ void respond_type_16(int server_socket, struct game **games, struct player *play
 		send_lose(server_socket, player, game, sent_messages);
 		send_your_move(server_socket, game, sent_messages, 1);
 	} else {
-		send_your_move(server_socket, game, sent_messages, 1);
+		send_your_move(server_socket, game, sent_messages, i);
 	}
 }
 
 /*
- * Sends a notification to other players about a player who guessed a word and sends win or lose messages
+ * Sends a notification to other players about a player who guessed a word.
+ * Also sends win, lose and / or next turn messages
  *
  *
  * server_socket: server socket to be used for sending
@@ -471,6 +582,8 @@ void respond_type_16(int server_socket, struct game **games, struct player *play
  * player: player who guessed the word
  *
  * received: message from the player with guessed word
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
  * */
 void respond_type_19(int server_socket, struct game **games, struct player *player, struct message received,
                      struct list **sent_messages) {
@@ -502,6 +615,18 @@ void respond_type_19(int server_socket, struct game **games, struct player *play
 	}
 }
 
+/*
+ * Sends a notification to other players about an unreachable player and removes a game
+ *
+ *
+ * server_socket: server socket to be used for sending
+ *
+ * games: list of games
+ *
+ * player: player who is unreachable
+ *
+ * sent_messages: list of sent messages to store the message until it is acknowledged
+ * */
 void send_unreachable_client(int server_socket, struct game **games, struct player *player,
                              struct list **sent_messages) {
 	struct message m;
@@ -529,22 +654,10 @@ void send_unreachable_client(int server_socket, struct game **games, struct play
 
 
 /*
- * Method that responds to a received message
+ * Function that responds to a received message
  *
  *
- * server_socket: server socket to be used for sending
- *
- * client_addr: client's attributes
- *
- * client_addr_length: client's attributes length
- *
- * received: received message to respond to
- *
- * games: list of games
- *
- *
- * return: 0 if a response has been sent, 1 if a response has been sent and another message should come from a client
- * and -1 otherwise
+ * thread_data: data that the thread need for responding to a messages
  * */
 void *respond(void *thread_data) {
 	struct thread_data *data;
@@ -571,11 +684,23 @@ void *respond(void *thread_data) {
 				player->client_addr = received->client_addr;
 				player->client_addr_length = received->client_addr_length;
 			}
-			if (player == NULL || received->number == player->received_datagrams + 1) {
+			if (player == NULL || received->number == player->received_datagrams + 1 || received->type == 1) {
 				if (player != NULL) {
-					player->received_datagrams++;
-					if (received->type != 1)
+					if (received->type != 1) {
+						player->received_datagrams++;
 						send_ack(server_socket, player, *received);
+					}
+					if (player->state == 0) {
+						struct game *game;
+
+						player->state = 1;
+						game = find_game(games, player->game);
+						game->wait_for--;
+						if (game->wait_for == 0) {
+							game->state = 1;
+							send_your_move(server_socket, game, data->sent_messages, 0);
+						}
+					}
 				}
 
 				switch (received->type) {

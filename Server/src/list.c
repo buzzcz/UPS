@@ -3,13 +3,29 @@
 #include <time.h>
 #include "list.h"
 
+/*
+ * Adds message to a list or creates new one
+ *
+ *
+ * l: list into which a message should be added
+ *
+ * message: message which should be added to a list
+ *
+ * player: player for whom the message if
+ *
+ * new_time: 1 if new time should be stored in list
+ * */
 void add_message(struct list **l, struct message message, struct player *player, int new_time) {
 	struct list *new;
+	struct timespec time;
 
 	new = malloc(sizeof(struct list));
 	new->message = message;
 	new->player = player;
-	if (new_time == 1) new->sent_time = clock();
+	if (new_time == 1) {
+		clock_gettime(CLOCK_REALTIME, &time);
+		new->sent_time = time.tv_sec;
+	}
 	new->next = NULL;
 
 	if (*l == NULL) {
@@ -25,6 +41,15 @@ void add_message(struct list **l, struct message message, struct player *player,
 	}
 }
 
+/*
+ * Gets first message from a list and removes it
+ *
+ *
+ * l: list of messages
+ *
+ *
+ * return: first message from a list
+ * */
 struct message *get_message(struct list **l) {
 	if (*l != NULL) {
 		struct message *m = &((*l)->message);
@@ -34,6 +59,14 @@ struct message *get_message(struct list **l) {
 	return NULL;
 }
 
+/*
+ * Goes through sent messages and removes message which is acknowledged by ack
+ *
+ *
+ * sent_messages: list of sent messages
+ *
+ * ack: acknowledgement for a message
+ * */
 void ack_message(struct list **sent_messages, struct message *ack) {
 	struct list *iter, *prev, *next;
 	int ack_number;
@@ -56,6 +89,12 @@ void ack_message(struct list **sent_messages, struct message *ack) {
 	}
 }
 
+/*
+ * Frees list
+ *
+ *
+ * l: list to be freed
+ * */
 void free_list(struct list *l) {
 	if (l->next != NULL) {
 		free_list(l->next);

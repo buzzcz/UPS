@@ -10,6 +10,10 @@
  * Creates new player
  *
  *
+ * client_addr: client's connection attributes
+ * 
+ * client_addr_length: client's connection attributes length
+ * 
  * opponents: number of opponents player wants to play
  *
  * name: nickname of the player
@@ -25,6 +29,7 @@ struct player *create_player(struct sockaddr_in client_addr, socklen_t client_ad
 	new->client_addr_length = client_addr_length;
 	new->sent_datagrams = 1;
 	new->received_datagrams = 0;
+	new->state = 1;
 	new->opponents = opponents;
 	new->game = -1;
 	new->wrong_guesses = 0;
@@ -51,7 +56,7 @@ void free_player(struct player *player) {
  *
  * games: list of games
  *
- * client_addr: adress which identifies the player
+ * nick: nick which identifies the player
  *
  *
  * return: player who was found, NULL otherwise
@@ -196,6 +201,9 @@ void create_game(struct game **games, int players_count, struct player *player) 
  * games: list of games
  *
  * player: player to be added to a game
+ * 
+ * 
+ * return: found game if it should be started, NULL otherwise
  * */
 struct game *add_player_to_game(struct game **games, struct player *player) {
 	struct game *iter;
@@ -281,31 +289,5 @@ void remove_game(struct game **games, int id) {
 		}
 		prev = iter;
 		iter = iter->next;
-	}
-}
-
-/*
- * Removes player from a game
- *
- *
- * games: list of games
- *
- * player: player to be removed
- * */
-void remove_player_from_game(struct game **games, struct game *game, struct player *player) {
-	if (game != NULL) {
-		int i;
-
-		for (i = 0; i < game->players_count; i++) {
-			if (strcmp(game->players[i]->name, player->name) == 0) {
-				free_player(game->players[i]);
-				game->players[i] = NULL;
-				game->players_count--;
-				if (game->players_count < 1) {
-					remove_game(games, game->id);
-				}
-				break;
-			}
-		}
 	}
 }

@@ -8,6 +8,10 @@
 
 /*
  * Main entry point of the program
+ *
+ * argc: number of entered arguments
+ *
+ * argv: entered arguments
  * */
 int main(int argc, char **argv) {
 	int server_socket;

@@ -5,16 +5,13 @@
 #include <arpa/inet.h>
 #include <semaphore.h>
 
-/*
- * Constant for size of the datagram "header"
- * */
-#define PEEK_SIZE 30
-/*
- * Constant for timeout before recvfrom stops waiting for data
- * */
+/*Constant for timeout before recvfrom stops waiting for data*/
 #define TIMEOUT 5
-#define TIME_TO_ACK 5000
+/*Constant for how long a message should stay in sent messages list until it is resent*/
+#define TIME_TO_ACK 5
+/*Constant for how many consumer-like threads should run*/
 #define NUMBER_OF_THREADS 3
+/*Constant for a buffer size of received / sent message*/
 #define BUFFER_SIZE 65000
 
 /*
@@ -33,14 +30,23 @@ struct message {
 	char *data;
 	/*Player's nickname*/
 	char *nick;
+	/*Player's connection attributes*/
 	struct sockaddr_in client_addr;
+	/*Player's connection attributes length*/
 	socklen_t client_addr_length;
 };
 
+/*
+ * Structure for a list of messages
+ * */
 struct list {
+	/*Message*/
 	struct message message;
-	clock_t sent_time;
+	/*Time when the message has been sent*/
+	time_t sent_time;
+	/*Player for whom the message is*/
 	struct player *player;
+	/*Next message in list*/
 	struct list *next;
 };
 
@@ -56,8 +62,15 @@ struct player {
 	int sent_datagrams;
 	/*Number of received datagrams from a player*/
 	int received_datagrams;
-	clock_t last_received;
-	/*Number of opponents player wants to play*/
+	/*Player state
+	 *
+	 *
+	 * 0: not responding
+	 *
+	 * 1: ok
+	 * */
+	int state;
+	/*Number of opponents player wants to play with*/
 	int opponents;
 	/*Id of game player is in*/
 	int game;
@@ -75,8 +88,11 @@ struct game {
 	int id;
 	/*State of a game
 	 *
+	 *
 	 * 0: waiting for opponent
+	 *
 	 * 1: in progress
+	 *
 	 * 2: waiting for disconnected player
 	 * */
 	int state;
@@ -98,12 +114,21 @@ struct game {
 	struct player **players;
 };
 
+/*
+ * Structure for a data which threads need to process messages
+ * */
 struct thread_data {
+	/*Socket to be used for receiving and sending messages*/
 	int server_socket;
+	/*List of games*/
 	struct game **games;
+	/*List of received messages*/
 	struct list **buffer;
+	/*List of sent messages*/
 	struct list **sent_messages;
+	/*Semaphore for indicating new message in buffer*/
 	sem_t *sem;
+	/*Mutex for mutual exclusion when working with shared variables*/
 	pthread_mutex_t *mutex;
 };
 
