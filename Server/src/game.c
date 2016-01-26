@@ -24,7 +24,7 @@ struct player *create_player(struct sockaddr_in client_addr, socklen_t client_ad
 	new->client_addr = client_addr;
 	new->client_addr_length = client_addr_length;
 	new->sent_datagrams = 1;
-	new->received_datagrams = 1;
+	new->received_datagrams = 0;
 	new->opponents = opponents;
 	new->game = -1;
 	new->wrong_guesses = 0;
@@ -127,6 +127,8 @@ char *check_guess(struct game *game, struct message received, size_t data_size) 
 	int i;
 
 	guess = received.data[0];
+	if (guess == '\'') game->guessed_letters[26] = guess;
+	else game->guessed_letters[guess - 'A'] = guess;
 
 	checked = malloc(data_size + 1);
 	checked[data_size] = '\0';
@@ -159,14 +161,19 @@ void create_game(struct game **games, int players_count, struct player *player) 
 	new = malloc(sizeof(struct game));
 	new->state = 0;
 	new->players_count = players_count;
-	new->player_moved = 0;
-	new->players = malloc(players_count * sizeof(struct player *));
-	new->players[0] = player;
+	new->players_move = 0;
+	new->wait_for = players_count - 1;
 	new->guessed_word = get_word();
 	new->filled_word = 0;
+	new->players = malloc(players_count * sizeof(struct player *));
+	new->players[0] = player;
 	for (i = 1; i < players_count; i++) {
 		new->players[i] = NULL;
 	}
+	for (i = 0; i < 28; i++) {
+		new->guessed_letters[i] = '0';
+	}
+	new->guessed_letters[27] = '\0';
 	new->next = NULL;
 	if (iter != NULL) {
 		while (iter->next != NULL) {
@@ -202,6 +209,7 @@ struct game *add_player_to_game(struct game **games, struct player *player) {
 				if (iter->players[i] == NULL) {
 					player->game = iter->id;
 					iter->players[i] = player;
+					iter->wait_for--;
 					break;
 				}
 			}
@@ -250,35 +258,29 @@ struct game *find_game(struct game **games, int id) {
  * id: id of the game to be removed
  * */
 void remove_game(struct game **games, int id) {
-	struct game *iter;
+	struct game *iter, *prev, *next;
 
 	iter = *games;
-	if (iter != NULL) {
-		int i;
-
-		while (iter->next != NULL) {
-			if (iter->next->id == id) {
-				struct game *del;
-
-				del = iter->next;
-				iter->next = del->next;
-
-				free(del->guessed_word);
-				for (i = 0; i < del->players_count; i++) {
-					if (del->players[i] != NULL) free_player(del->players[i]);
-				}
-				free(del->players);
-				free(del);
-				break;
-			}
-			iter = iter->next;
-		}
+	prev = NULL;
+	next = NULL;
+	while (iter != NULL) {
 		if (iter->id == id) {
+			int i;
+
+			if (prev != NULL) prev->next = iter->next;
+			else next = iter->next;
+			iter->next = NULL;
+			free(iter->guessed_word);
 			for (i = 0; i < iter->players_count; i++) {
 				if (iter->players[i] != NULL) free_player(iter->players[i]);
 			}
+			free(iter->players);
 			free(iter);
+			if (prev == NULL) *games = next;
+			break;
 		}
+		prev = iter;
+		iter = iter->next;
 	}
 }
 

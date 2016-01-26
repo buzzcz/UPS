@@ -82,8 +82,12 @@ struct game {
 	int state;
 	/*Number of players supposed to be in a game*/
 	int players_count;
+	/*For how many players is the game waiting*/
+	int wait_for;
 	/*Index of player who made a move/is supposed to make a move*/
-	int player_moved;
+	int players_move;
+	/*Already guessed letters*/
+	char guessed_letters[28];
 	/*Next game in a list*/
 	struct game *next;
 	/*Word that is being guessed*/

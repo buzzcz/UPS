@@ -3,13 +3,13 @@
 #include <time.h>
 #include "list.h"
 
-void add_message(struct list **l, struct message message, struct player *player) {
+void add_message(struct list **l, struct message message, struct player *player, int new_time) {
 	struct list *new;
 
 	new = malloc(sizeof(struct list));
 	new->message = message;
 	new->player = player;
-	new->sent_time = clock();
+	if (new_time == 1) new->sent_time = clock();
 	new->next = NULL;
 
 	if (*l == NULL) {
@@ -35,18 +35,20 @@ struct message *get_message(struct list **l) {
 }
 
 void ack_message(struct list **sent_messages, struct message *ack) {
-	struct list *iter, *prev = NULL, *next = NULL;
+	struct list *iter, *prev, *next;
+	int ack_number;
 
 	iter = *sent_messages;
+	prev = NULL;
+	next = NULL;
+	ack_number = atoi(ack->data);
 	while (iter != NULL) {
-		int ack_number = atoi(ack->data);
-
 		if (iter->message.number == ack_number && strcmp(iter->player->name, ack->nick) == 0) {
 			if (prev != NULL) prev->next = iter->next;
 			else next = iter->next;
 			iter->next = NULL;
 			free_list(iter);
-			if (prev == NULL) iter = next;
+			if (prev == NULL) *sent_messages = next;
 			break;
 		}
 		prev = iter;
