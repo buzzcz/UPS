@@ -2,6 +2,8 @@ import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Class for UDP connection and communication
@@ -23,13 +25,17 @@ public class Connection {
 	private int port;
 
 	/**
-	 * Number of sent datagrams
+	 * Number of sent datagrams by player
 	 */
-	private int numberOfSentDatagrams;
+	private int sentDatagrams;
 	/**
-	 * Number of received datagrams
+	 * Number of received datagrams by player
 	 */
-	private int numberOfReceivedDatagrams;
+	private int receivedDatagrams;
+	/**
+	 * Lock for access to shared variable
+	 */
+	private Lock lock;
 
 	/**
 	 * Constant representing number of milliseconds to wait in receive
@@ -39,6 +45,11 @@ public class Connection {
 	 * Constant for size of buffer receiving message
 	 */
 	private final int BUFFER_SIZE = 65000;
+
+	private int numberOfReceived;
+	private int numberOfUnparseable;
+	private int numberOfSent;
+	private int numberOfResent;
 
 	/******************************************************************************************************************/
 
@@ -65,6 +76,13 @@ public class Connection {
 		} catch (SocketException e) {
 			System.out.println("Socket timeout could not be set");
 		}
+		lock = new ReentrantLock();
+		sentDatagrams = 0;
+		receivedDatagrams = 0;
+		numberOfReceived = 0;
+		numberOfUnparseable = 0;
+		numberOfSent = 0;
+		numberOfResent = 0;
 	}
 
 	/**
@@ -80,16 +98,19 @@ public class Connection {
 	 * @param message      message to be sent
 	 * @param sentMessages list of sent messages
 	 */
-	public void sendMessage(Message message, ArrayList<Message> sentMessages) {
+	public void sendMessage(Message message, ArrayList<Message> sentMessages, boolean newTime) {
 		DatagramPacket send = new DatagramPacket(message.getMessageByte(), message.getMessageByte().length, host,
 				port);
 		System.out.println("Client is sending: " + message.getMessage());
 		try {
+			lock.lock();
 			socket.send(send);
-			if (message.getType() != 2) {
-				message.setSentTime(new Date().getTime());
+			if (message.getType() != 1) {
+				if (newTime) message.setSentTime(new Date().getTime());
 				sentMessages.add(message);
 			}
+			numberOfSent++;
+			lock.unlock();
 		} catch (IOException e) {
 			System.out.println("Message could not be sent");
 		}
@@ -108,6 +129,7 @@ public class Connection {
 
 		String s = new String(buffer);
 		System.out.println("Server sent: " + s);
+		numberOfReceived++;
 		int index, number, type, checksum, dataSize;
 		String data;
 
@@ -141,8 +163,17 @@ public class Connection {
 	 *
 	 * @return number of sent datagrams
 	 */
-	public int getNumberOfSentDatagrams() {
-		return numberOfSentDatagrams;
+	public int getSentDatagrams() {
+		return sentDatagrams;
+	}
+
+	/**
+	 * Setter for number of sent datagrams
+	 *
+	 * @param sentDatagrams number of sent datagrams
+	 */
+	public void setSentDatagrams(int sentDatagrams) {
+		this.sentDatagrams = sentDatagrams;
 	}
 
 	/**
@@ -150,8 +181,8 @@ public class Connection {
 	 *
 	 * @return number of sent datagrams
 	 */
-	public int increaseNumberOfSentDatagrams() {
-		return numberOfSentDatagrams++;
+	public int increaseSentDatagrams() {
+		return sentDatagrams++;
 	}
 
 	/**
@@ -159,14 +190,56 @@ public class Connection {
 	 *
 	 * @return number of received datagrams
 	 */
-	public int getNumberOfReceivedDatagrams() {
-		return numberOfReceivedDatagrams;
+	public int getReceivedDatagrams() {
+		return receivedDatagrams;
+	}
+
+	/**
+	 * Setter for number of received datagrams
+	 *
+	 * @param receivedDatagrams number of received datagrams
+	 */
+	public void setReceivedDatagrams(int receivedDatagrams) {
+		this.receivedDatagrams = receivedDatagrams;
 	}
 
 	/**
 	 * Increments number of received datagrams
 	 */
-	public void increaseNumberOfReceivedDatagrams() {
-		numberOfReceivedDatagrams++;
+	public void increaseReceivedDatagrams() {
+		receivedDatagrams++;
+	}
+
+	public int getNumberOfReceived() {
+		return numberOfReceived;
+	}
+
+	public int getNumberOfUnparseable() {
+		return numberOfUnparseable;
+	}
+
+	public int getNumberOfSent() {
+		return numberOfSent;
+	}
+
+	public int getNumberOfResent() {
+		return numberOfResent;
+	}
+
+	public void increaseNumberOfUnparseable() {
+		numberOfUnparseable++;
+	}
+
+	public void increaseNumberOfResent() {
+		numberOfResent++;
+	}
+
+	/**
+	 * Getter for lock
+	 *
+	 * @return lock
+	 */
+	public Lock getLock() {
+		return lock;
 	}
 }

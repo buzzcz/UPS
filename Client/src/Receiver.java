@@ -64,7 +64,8 @@ public class Receiver extends Thread {
 					buffer.add(received);
 					m.release();
 				} else {
-					System.err.println("Can't parse message");
+					System.out.println("Can't parse message");
+					udp.increaseNumberOfUnparseable();
 				}
 			} catch (IOException e) {
 				checkSentMessages();
@@ -76,17 +77,21 @@ public class Receiver extends Thread {
 	 * Checks buffer of sent messages for old ones and sends them again
 	 */
 	private void checkSentMessages() {
+		udp.getLock().lock();
 		for (int i = 0; i < sentMessages.size(); i++) {
 			long now = new Date().getTime();
 			if (now - sentMessages.get(i).getSentTime() > TIME_TO_ACK) {
 				if (now - sentMessages.get(i).getSentTime() > 10 * TIME_TO_ACK) {
-					System.err.println("Connection with server lost");
-				} else if (now - sentMessages.get(i).getSentTime() > 3 * TIME_TO_ACK) {
-					udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 1, window.getNick().length(), window.getNick()), sentMessages);
-				} Message m = sentMessages.remove(i);
-				udp.sendMessage(m, sentMessages);
+					window.setStatusLabelText("Server unreachable");
+					sentMessages = new ArrayList<Message>();
+					continue;
+				}
+				Message m = sentMessages.remove(i);
+				udp.sendMessage(m, sentMessages, false);
+				udp.increaseNumberOfResent();
 			}
 		}
+		udp.getLock().unlock();
 	}
 
 	/**
@@ -109,12 +114,14 @@ public class Receiver extends Thread {
 	 * @param ack acknowledgement
 	 */
 	public void ackMessage(Message ack) {
+		udp.getLock().lock();
 		for (int i = 0; i < sentMessages.size(); i++) {
 			if (sentMessages.get(i).getNumber() == Integer.parseInt(ack.getData())) {
 				sentMessages.remove(i);
 				break;
 			}
 		}
+		udp.getLock().unlock();
 	}
 
 	/**

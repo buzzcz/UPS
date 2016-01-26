@@ -1,0 +1,54 @@
+<project name="hangman" default="build" basedir=".">
+
+<target name="build" depends="">
+    <echo message="Compiling..."/>
+    <exec executable="javac" dir="${basedir}/src">
+        <arg value="-cp"/>
+        <arg value="${basedir}/src"/>
+        <arg value="Canvas.java"/>
+        <arg value="Connection.java"/>
+        <arg value="Game.java"/>
+        <arg value="Message.java"/>
+        <arg value="ProcessMessage.java"/>
+        <arg value="Receiver.java"/>
+        <arg value="Window.java"/>
+        <arg value="Main.java"/>
+    </exec>
+</target>
+
+<target name="jar" depends="build">
+    <echo message="Creating jar..."/>
+    <jar destfile="Hangman.jar" basedir="${basedir}/src">
+        <manifest>
+            <attribute name="Main-Class" value="Main"/>
+        </manifest>
+    </jar>
+</target>
+
+<target name="clean" depends="">
+    <echo message="Cleaning..."/>
+    <exec executable="rm" dir="${basedir}/src">
+	<arg value="-f"/>
+        <arg value="Canvas.class"/>
+        <arg value="Connection.class"/>
+        <arg value="Game.class"/>
+        <arg value="Main.class"/>
+        <arg value="Main$1.class"/>
+        <arg value="Message.class"/>
+        <arg value="ProcessMessage.class"/>
+        <arg value="Receiver.class"/>
+        <arg value="Window.class"/>
+        <arg value="Window$1.class"/>
+        <arg value="Window$2.class"/>
+        <arg value="Window$3.class"/>
+        <arg value="Window$4.class"/>
+        <arg value="Window$5.class"/>
+        <arg value="Window$6.class"/>
+        <arg value="Window$7.class"/>
+        <arg value="Window$8.class"/>
+        <arg value="Window$9.class"/>
+    </exec>
+</target>
+
+</project>
+

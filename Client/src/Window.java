@@ -3,6 +3,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.Arrays;
 
 /**
  * @author Jaroslav Klaus
@@ -33,9 +34,9 @@ public class Window extends JFrame {
 	 */
 	private int opponents;
 	/**
-	 * Last guessed char
+	 * Last guessed char or word
 	 */
-	private char lastGuessed;
+	private String lastGuessed;
 
 	/**
 	 * Headline label
@@ -49,6 +50,10 @@ public class Window extends JFrame {
 	 * Label with the guessed word
 	 */
 	private JLabel guessedWordLabel;
+	/**
+	 * Label with already guessed letters
+	 */
+	private JLabel alreadyGuessedLabel;
 
 	/******************************************************************************************************************/
 
@@ -88,6 +93,11 @@ public class Window extends JFrame {
 		registerListeners();
 	}
 
+	private void printStats() {
+		System.out.println("Received: " + udp.getNumberOfReceived() + "\nUnparseable: " + udp.getNumberOfUnparseable()
+				+ "\nSent: " + udp.getNumberOfSent() + "\nResent: " + udp.getNumberOfResent());
+	}
+
 	/**
 	 * Method that closes the socket and exits the game
 	 */
@@ -95,13 +105,16 @@ public class Window extends JFrame {
 		int result = JOptionPane.showOptionDialog(Window.this, "Do you want to exit the game?", "Exit game",
 				JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 		if (result == JOptionPane.YES_OPTION) {
-//		    TODO how to exit game - when and how to stop threads
+			if (game != null) {
+				Message m = new Message(udp.increaseSentDatagrams(), 8, nick.length(), nick);
+				udp.sendMessage(m, receiver.getSentMessages(), true);
+			}
+
+			printStats();
+			System.out.println("Interrupting threads...");
 			receiver.interrupt();
 			consumer.interrupt();
-			if (game != null) {
-				Message m = new Message(udp.increaseNumberOfSentDatagrams(), 10, nick.length(), nick);
-				udp.sendMessage(m, receiver.getSentMessages());
-			}
+			System.out.println("Exiting...");
 			if (udp != null) udp.close();
 			System.exit(0);
 		}
@@ -130,11 +143,13 @@ public class Window extends JFrame {
 						.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 				if (option == JOptionPane.OK_OPTION) {
 					nick = nickField.getText();
+					udp.setSentDatagrams(0);
+					udp.setReceivedDatagrams(0);
 					opponents = (Integer) opponentsSpinner.getValue();
-					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 5, nick.length() +
+					Message m = new Message(udp.increaseSentDatagrams(), 3, nick.length() +
 							opponentsSpinner.getValue().toString().length() + 1, nick + "," +
 							opponentsSpinner.getValue().toString());
-					udp.sendMessage(m, receiver.getSentMessages());
+					udp.sendMessage(m, receiver.getSentMessages(), true);
 				}
 			}
 		});
@@ -149,8 +164,10 @@ public class Window extends JFrame {
 						.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 				if (result == JOptionPane.OK_OPTION) {
 					nick = nickField.getText();
-					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 7, nick.length(), nick);
-					udp.sendMessage(m, receiver.getSentMessages());
+					udp.setSentDatagrams(0);
+					udp.setReceivedDatagrams(0);
+					Message m = new Message(udp.increaseSentDatagrams(), 5, nick.length(), nick);
+					udp.sendMessage(m, receiver.getSentMessages(), true);
 				}
 			}
 		});
@@ -194,61 +211,61 @@ public class Window extends JFrame {
 		guessedWordLabel = new JLabel("No word");
 		guessedWordLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 		getContentPane().add(guessedWordLabel);
+		getContentPane().add(new JSeparator(SwingConstants.HORIZONTAL));
+
+		alreadyGuessedLabel = new JLabel("No letters");
+		alreadyGuessedLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+		getContentPane().add(alreadyGuessedLabel);
 
 		canvas.setPreferredSize(new Dimension(getWidth(), getHeight() - statusLabel.getHeight() - guessedWordLabel
-				.getHeight()));
+				.getHeight() - alreadyGuessedLabel.getHeight()));
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
-				resizeStatusLabel();
-				resizeGuessedWordLabel();
+				resizeLabel(statusLabel);
+				resizeLabel(guessedWordLabel);
+				resizeLabel(alreadyGuessedLabel);
+				canvas.setPreferredSize(new Dimension(getWidth(), getHeight() - statusLabel.getHeight() -
+						guessedWordLabel.getHeight() - alreadyGuessedLabel.getHeight()));
 			}
 		});
 		statusLabel.addPropertyChangeListener("text", new PropertyChangeListener() {
 			@Override
 			public void propertyChange(PropertyChangeEvent evt) {
-				resizeStatusLabel();
+				resizeLabel(statusLabel);
 			}
 		});
 		guessedWordLabel.addPropertyChangeListener("text", new PropertyChangeListener() {
 			@Override
 			public void propertyChange(PropertyChangeEvent evt) {
-				resizeGuessedWordLabel();
+				resizeLabel(guessedWordLabel);
 			}
 		});
+		alreadyGuessedLabel.addPropertyChangeListener("text", new PropertyChangeListener() {
+			@Override
+			public void propertyChange(PropertyChangeEvent evt) {
+				resizeLabel(alreadyGuessedLabel);
+			}
+		});
+		statusLabel.setFont(new Font(statusLabel.getFont().getName(), Font.PLAIN, 60));
+		guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN, 60));
+		alreadyGuessedLabel.setFont(new Font(alreadyGuessedLabel.getFont().getName(), Font.PLAIN, 60));
 	}
 
-	private void resizeStatusLabel() {
-		if (statusLabel.getText().length() * statusLabel.getFont().getSize() > getWidth()) {
-			while (statusLabel.getText().length() * statusLabel.getFont().getSize() > getWidth()) {
-				statusLabel.setFont(new Font(statusLabel.getFont().getName(), Font.PLAIN, statusLabel.getFont()
-						.getSize() - 1));
+	private void resizeLabel(JLabel label) {
+		if (label.getText().length() * label.getFont().getSize() > getWidth()) {
+			while (label.getText().length() * label.getFont().getSize() > getWidth()) {
+				label.setFont(new Font(label.getFont().getName(), Font.PLAIN, label.getFont().getSize() - 1));
 			}
-		} else if (statusLabel.getText().length() * (statusLabel.getFont().getSize() + 1) < getWidth() * 0.9 &&
-				statusLabel.getFont().getSize() + 1 < 105) {
-			while (statusLabel.getText().length() * (statusLabel.getFont().getSize() + 1) < getWidth() * 0.9) {
-				statusLabel.setFont(new Font(statusLabel.getFont().getName(), Font.PLAIN, statusLabel.getFont()
-						.getSize() + 1));
-
+		} else if (label.getText().length() * (label.getFont().getSize() + 1) < getWidth() * 0.9 && label.getFont()
+				.getSize() + 1 < 60) {
+			while (label.getText().length() * (label.getFont().getSize() + 1) < getWidth() * 0.9 && label.getFont()
+					.getSize() + 1 < 60) {
+				label.setFont(new Font(label.getFont().getName(), Font.PLAIN, label.getFont().getSize() + 1));
 			}
 		}
-	}
-
-	private void resizeGuessedWordLabel() {
-		if (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
-			while (guessedWordLabel.getText().length() * guessedWordLabel.getFont().getSize() > getWidth()) {
-				guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN, guessedWordLabel
-						.getFont().getSize() - 1));
-			}
-		} else if (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth() * 0.9
-				&& guessedWordLabel.getFont().getSize() + 1 < 105) {
-			while (guessedWordLabel.getText().length() * (guessedWordLabel.getFont().getSize() + 1) < getWidth() *
-					0.9) {
-				guessedWordLabel.setFont(new Font(guessedWordLabel.getFont().getName(), Font.PLAIN, guessedWordLabel
-						.getFont().getSize() + 1));
-
-			}
-		}
+		canvas.setPreferredSize(new Dimension(getWidth(), getHeight() - statusLabel.getHeight() - guessedWordLabel
+				.getHeight() - alreadyGuessedLabel.getHeight()));
 	}
 
 	/**
@@ -261,12 +278,30 @@ public class Window extends JFrame {
 				if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
 						.getKeyChar() == '\'' || e.getKeyChar() == ' ')) {
 					String data = e.getKeyChar() + "";
-					Message m = new Message(udp.increaseNumberOfSentDatagrams(), 18, nick.length() + 1 + data.length()
-							, nick + "," + data.toUpperCase());
-					udp.sendMessage(m, receiver.getSentMessages());
-					lastGuessed = data.toUpperCase().charAt(0);
+					Message m = new Message(udp.increaseSentDatagrams(), 16, nick.length() + 1 + data.length(), nick +
+							"," + data.toUpperCase());
+					udp.sendMessage(m, receiver.getSentMessages(), true);
+					lastGuessed = data.toUpperCase();
 					setStatusLabelText("You guessed " + lastGuessed);
+					if (!alreadyGuessedLabel.getText().contains(lastGuessed)) {
+						char[] ch = (alreadyGuessedLabel.getText() + lastGuessed).toCharArray();
+						Arrays.sort(ch);
+						alreadyGuessedLabel.setText(new String(ch));
+					}
 					game.setMyMove(false);
+				} else if (game != null && game.isMyMove() && e.getKeyCode() == KeyEvent.VK_ENTER) {
+					JTextField wordField = new JTextField();
+					JComponent[] components = new JComponent[]{new JLabel("Enter guessed word:"), wordField};
+					int option = JOptionPane.showOptionDialog(Window.this, components, "Guessing word", JOptionPane
+							.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+					if (option == JOptionPane.OK_OPTION) {
+						Message m = new Message(udp.increaseSentDatagrams(), 19, nick.length() + 1 + wordField.getText
+								().length(), nick + "," + wordField.getText().toUpperCase());
+						udp.sendMessage(m, receiver.getSentMessages(), true);
+						lastGuessed = wordField.getText().toUpperCase();
+						setStatusLabelText("You guessed " + wordField.getText().toUpperCase());
+						game.setMyMove(false);
+					}
 				}
 			}
 		});
@@ -336,12 +371,30 @@ public class Window extends JFrame {
 	}
 
 	/**
-	 * Getter for last guessed letter
+	 * Getter for label with already guessed letters
 	 *
-	 * @return last guessed letter
+	 * @return label with already guessed letters
 	 */
-	public char getLastGuessed() {
+	public JLabel getAlreadyGuessedLabel() {
+		return alreadyGuessedLabel;
+	}
+
+	/**
+	 * Getter for last guessed letter / word
+	 *
+	 * @return last guessed letter / word
+	 */
+	public String getLastGuessed() {
 		return lastGuessed;
+	}
+
+	/**
+	 * Sets last guessed letter / word
+	 *
+	 * @param lastGuessed last guessed letter / word
+	 */
+	public void setLastGuessed(String lastGuessed) {
+		this.lastGuessed = lastGuessed;
 	}
 
 	/**

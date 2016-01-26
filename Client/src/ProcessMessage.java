@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.util.Arrays;
 
 /**
  * @author Jaroslav Klaus
@@ -40,64 +41,73 @@ public class ProcessMessage extends Thread {
 	public void run() {
 		Message received;
 
-		while (true) {
-			received = receiver.getMessageFromBuffer();
-			if (received.checkChecksum() && received.getNumber() == udp.getNumberOfReceivedDatagrams() + 1) {
-				udp.increaseNumberOfReceivedDatagrams();
-				if (received.getType() != 2) sendAck(String.valueOf(received.getNumber()));
+		try {
+			while (true) {
+				received = receiver.getMessageFromBuffer();
+				udp.getLock().lock();
+				if (received.checkChecksum()) {
+					if (received.getNumber() == udp.getReceivedDatagrams() + 1) {
+						udp.increaseReceivedDatagrams();
+						if (received.getType() != 1) sendAck(String.valueOf(received.getNumber()));
 
-				switch (received.getType()) {
-					case 1: //Ping
-						break;
-					case 2: // Ack
-						receiver.ackMessage(received);
-						break;
-					case 6: // Answer to connect request
-						respondType6(received);
-						break;
-					case 8: // Answer to reconnect request
-						respondType8(received);
-						break;
-					case 9: // Start of game
-						respondType9(received);
-						break;
-					case 11:    // Someone disconnected
-						respondType11(received);
-						break;
-					case 12:    // You lost
-						respondType12();
-						break;
-					case 13:    // Someone lost
-						respondType13(received);
-						break;
-					case 14:    // You won (end of game, you guessed the word)
-						respondType14();
-						break;
-					case 15:    // Someone won
-						respondType15(received);
-						break;
-					case 16:    // Your move
-						respondType16();
-						break;
-					case 17:    // Someone's move
-						respondType17(received);
-						break;
-					case 19:    // Answer to move
-						respondType19(received);
-						break;
-					case 20:    // Someone made a move
-						respondType20(received);
-						break;
-					case 22:    // Someone tried to guess the word
-						respondType22(received);
-						break;
-					default:
-						System.err.println("Unknown type");
-						break;
-				}
-			} else if (received.getNumber() <= udp.getNumberOfReceivedDatagrams()) {
-				sendAck(String.valueOf(received.getNumber()));
+						switch (received.getType()) {
+							case 1: // Ack
+								receiver.ackMessage(received);
+								break;
+							case 2: // Unreachable client
+								respondType2(received);
+								break;
+							case 4: // Answer to connect request
+								respondType4(received);
+								break;
+							case 6: // Answer to reconnect request
+								respondType6(received);
+								break;
+							case 7: // Start of game
+								respondType7(received);
+								break;
+							case 9: // Someone disconnected
+								respondType9(received);
+								break;
+							case 10:    // You lost
+								respondType10();
+								break;
+							case 11:    // Someone lost
+								respondType11(received);
+								break;
+							case 12:    // You won (end of game, you guessed the word)
+								respondType12();
+								break;
+							case 13:    // Someone won
+								respondType13(received);
+								break;
+							case 14:    // Your move
+								respondType14();
+								break;
+							case 15:    // Someone's move
+								respondType15(received);
+								break;
+							case 17:    // Answer to move
+								respondType17(received);
+								break;
+							case 18:    // Someone made a move
+								respondType18(received);
+								break;
+							case 20:    // Someone tried to guess the word
+								respondType20(received);
+								break;
+							default:
+								System.out.println("Unknown type");
+								break;
+						}
+					} else if (received.getNumber() <= udp.getReceivedDatagrams()) {
+						sendAck(String.valueOf(received.getNumber()));
+					} else System.out.println("Number not correct: " + received.getNumber() + ", expecting: " + (udp.getReceivedDatagrams() + 1));
+				} else System.out.println("Wrong checksum");
+				udp.getLock().unlock();
 			}
+		} catch (Exception e) {
+
 		}
 	}
 
@@ -107,11 +117,16 @@ public class ProcessMessage extends Thread {
 	 * @param receivedNumber number that should be acknowledged
 	 */
 	private void sendAck(String receivedNumber) {
-		udp.sendMessage(new Message(udp.increaseNumberOfSentDatagrams(), 2, window.getNick().length() + 1 +
-				receivedNumber.length(), window.getNick() + "," + receivedNumber), receiver.getSentMessages());
+		udp.sendMessage(new Message(udp.increaseSentDatagrams(), 1, window.getNick().length() + 1 +
+				receivedNumber.length(), window.getNick() + "," + receivedNumber), receiver.getSentMessages(), false);
 	}
 
-	private void respondType6(Message received) {
+	private void respondType2(Message received) {
+		window.setStatusLabelText("End of game - " + received.getData() + " is unreachable");
+		window.setGame(null);
+	}
+
+	private void respondType4(Message received) {
 		int data = Integer.parseInt(received.getData());
 		if (data == 0) {
 			window.setGame(new Game(window.getOpponents() + 1));
@@ -125,58 +140,72 @@ public class ProcessMessage extends Thread {
 		}
 	}
 
-	private void respondType8(Message received) {
+	private void respondType6(Message received) {
 		String data[] = received.getData().split(",");
 		if (Integer.parseInt(data[0]) == -1) {
 			JOptionPane.showMessageDialog(window, "Game could not have been reconnected, nickname not found in any " +
 					"game", "Reconnect not possible", JOptionPane.ERROR_MESSAGE);
 		} else {
-			window.setGame(new Game(Integer.parseInt(data[0]), Integer.parseInt(data[1]), Integer.parseInt(data[2]),
-					data[3], Integer.parseInt(data[4])));
+			String letters = "";
+			for (int i = 0; i < data[3].length(); i++) {
+				if (data[3].charAt(i) != '0') letters += data[3].charAt(i);
+			}
+			window.setGame(new Game(Integer.parseInt(data[0]), Integer.parseInt(data[1]), data[2].length(), letters,
+					Integer.parseInt(data[4])));
+			window.setStatusLabelText("Reconnected, waiting for other players");
+			window.setGuessedWordLabelText(data[2]);
+			window.getAlreadyGuessedLabel().setText(letters);
 			window.getCanvas().setWrongGuesses(Integer.parseInt(data[4]));
 		}
 	}
 
-	private void respondType9(Message received) {
+	private void respondType7(Message received) {
 		String word = "";
 		for (int i = 0; i < Integer.parseInt(received.getData()); i++) {
-			word += "_";
+			word += "-";
 		}
-		window.getCanvas().setWrongGuesses(0);
 		window.setStatusLabelText("Start of the game");
 		window.setGuessedWordLabelText(word);
+		window.getAlreadyGuessedLabel().setText(" ");
+		window.getCanvas().setWrongGuesses(0);
 	}
 
-	private void respondType11(Message received) {
+	private void respondType9(Message received) {
 		window.setStatusLabelText(received.getData() + " disconnected");
 	}
 
-	private void respondType12() {
+	private void respondType10() {
 		window.setStatusLabelText("End of game - you lost");
 	}
 
-	private void respondType13(Message received) {
+	private void respondType11(Message received) {
 		window.setStatusLabelText(received.getData() + " lost");
 	}
 
-	private void respondType14() {
+	private void respondType12() {
 		window.setStatusLabelText("End of game - you won");
+		if (window.getLastGuessed().length() > 1) {
+			window.setGuessedWordLabelText(window.getLastGuessed());
+		}
+		window.setGame(null);
 	}
 
-	private void respondType15(Message received) {
+	private void respondType13(Message received) {
 		window.setStatusLabelText("End of game - " + received.getData() + " won");
+		if (window.getGuessedWordLabelText().contains("_")) window.setGuessedWordLabelText(window.getLastGuessed());
+		window.setGame(null);
 	}
 
-	private void respondType16() {
+	private void respondType14() {
 		window.getGame().setMyMove(true);
 		window.setStatusLabelText("It's your move");
 	}
 
-	private void respondType17(Message received) {
+	private void respondType15(Message received) {
 		window.setStatusLabelText("It's " + received.getData() + "'s move");
 	}
 
-	private void respondType19(Message received) {
+	private void respondType17(Message received) {
 		boolean hit = false;
 		String word = window.getGuessedWordLabelText(), newWord = "";
 		for (int i = 0; i < received.getData().length(); i++) {
@@ -192,7 +221,7 @@ public class ProcessMessage extends Thread {
 		window.setGuessedWordLabelText(newWord);
 	}
 
-	private void respondType20(Message received) {
+	private void respondType18(Message received) {
 		String data[] = received.getData().split(",");
 		window.setStatusLabelText(data[0] + " guessed " + data[1]);
 		String word = window.getGuessedWordLabelText(), newWord = "";
@@ -201,10 +230,16 @@ public class ProcessMessage extends Thread {
 			else newWord += word.charAt(i);
 		}
 		window.setGuessedWordLabelText(newWord);
+		if (!window.getAlreadyGuessedLabel().getText().contains(data[1])) {
+			char[] ch = (window.getAlreadyGuessedLabel().getText() + data[1]).toCharArray();
+			Arrays.sort(ch);
+			window.getAlreadyGuessedLabel().setText(new String(ch));
+		}
 	}
 
-	private void respondType22(Message received) {
+	private void respondType20(Message received) {
 		String data[] = received.getData().split(",");
 		window.setStatusLabelText(data[0] + " guessed word " + data[1]);
+		window.setLastGuessed(data[1]);
 	}
 }
