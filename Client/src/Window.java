@@ -95,7 +95,8 @@ public class Window extends JFrame {
 
 	private void printStats() {
 		System.out.println("Received: " + udp.getNumberOfReceived() + "\nUnparseable: " + udp.getNumberOfUnparseable()
-				+ "\nSent: " + udp.getNumberOfSent() + "\nResent: " + udp.getNumberOfResent());
+				+ "\nSent: " + udp.getNumberOfSent() + "\nResent: " + udp.getNumberOfResent() + "\nReceived bytes: " +
+				udp.getBytesReceived() + "\nSent bytes: " + udp.getBytesSent() + "\n");
 	}
 
 	/**
@@ -276,7 +277,8 @@ public class Window extends JFrame {
 			@Override
 			public void keyReleased(KeyEvent e) {
 				if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
-						.getKeyChar() == '\'' || e.getKeyChar() == ' ')) {
+						.getKeyChar() == '\'' || e.getKeyChar() == ' ') && !alreadyGuessedLabel.getText().contains(e
+						.getKeyChar() + "")) {
 					String data = e.getKeyChar() + "";
 					Message m = new Message(udp.increaseSentDatagrams(), 16, nick.length() + 1 + data.length(), nick +
 							"," + data.toUpperCase());

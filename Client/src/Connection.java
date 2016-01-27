@@ -46,10 +46,30 @@ public class Connection {
 	 */
 	private final int BUFFER_SIZE = 65000;
 
+	/**
+	 * Number of received datagrams since start of the client
+	 */
 	private int numberOfReceived;
+	/**
+	 * Number of unparseable datagrams since start of the client
+	 */
 	private int numberOfUnparseable;
+	/**
+	 * Number of sent datagrams since start of the client
+	 */
 	private int numberOfSent;
+	/**
+	 * Number of resent datagrams since start of the client
+	 */
 	private int numberOfResent;
+	/**
+	 * Number of received bytes since start of the client
+	 */
+	private int bytesReceived;
+	/**
+	 * Number of sent bytes since start of the client
+	 */
+	private int bytesSent;
 
 	/******************************************************************************************************************/
 
@@ -83,6 +103,8 @@ public class Connection {
 		numberOfUnparseable = 0;
 		numberOfSent = 0;
 		numberOfResent = 0;
+		bytesReceived = 0;
+		bytesSent = 0;
 	}
 
 	/**
@@ -110,6 +132,7 @@ public class Connection {
 				sentMessages.add(message);
 			}
 			numberOfSent++;
+			bytesSent += message.getMessageByte().length;
 			lock.unlock();
 		} catch (IOException e) {
 			System.out.println("Message could not be sent");
@@ -130,6 +153,7 @@ public class Connection {
 		String s = new String(buffer);
 		System.out.println("Server sent: " + s);
 		numberOfReceived++;
+		bytesReceived += s.getBytes().length;
 		int index, number, type, checksum, dataSize;
 		String data;
 
@@ -210,28 +234,67 @@ public class Connection {
 		receivedDatagrams++;
 	}
 
+	/**
+	 * Getter for number of received datagrams since start of client
+	 *
+	 * @return number of received datagrams since start of the client
+	 */
 	public int getNumberOfReceived() {
 		return numberOfReceived;
 	}
 
+	/**
+	 * Getter for number of unparseable datagrams since start of the client
+	 * @return number of unparseable datagrams since start of the client
+	 */
 	public int getNumberOfUnparseable() {
 		return numberOfUnparseable;
 	}
 
+	/**
+	 * Getter for number of sent datagrams since start of the client
+	 * @return number of sent datagrams since start of the client
+	 */
 	public int getNumberOfSent() {
 		return numberOfSent;
 	}
 
+	/**
+	 * Getter for number of resent datagrams since start of the client
+	 * @return number of resent datagrams since start of the client
+	 */
 	public int getNumberOfResent() {
 		return numberOfResent;
 	}
 
+	/**
+	 * Increases number of unparseable datagrams since start of the client
+	 */
 	public void increaseNumberOfUnparseable() {
 		numberOfUnparseable++;
 	}
 
+	/**
+	 * Increases number of resent datagrams since start of the client
+	 */
 	public void increaseNumberOfResent() {
 		numberOfResent++;
+	}
+
+	/**
+	 * Getter for number of received bytes since start of the client
+	 * @return number of received bytes since start of the client
+	 */
+	public int getBytesReceived() {
+		return bytesReceived;
+	}
+
+	/**
+	 * Getter for number of sent bytes since start of the client
+	 * @return number of sent bytes since start of the client
+	 */
+	public int getBytesSent() {
+		return bytesSent;
 	}
 
 	/**

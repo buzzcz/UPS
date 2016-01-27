@@ -16,7 +16,9 @@
     </exec>
 </target>
 
-<target name="jar" depends="build">
+<target name="jar" depends="create,clean"/>
+
+<target name="create" depends="build">
     <echo message="Creating jar..."/>
     <jar destfile="Hangman.jar" basedir="${basedir}/src">
         <manifest>

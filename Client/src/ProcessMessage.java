@@ -1,4 +1,5 @@
 import javax.swing.*;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -46,9 +47,11 @@ public class ProcessMessage extends Thread {
 				received = receiver.getMessageFromBuffer();
 				udp.getLock().lock();
 				if (received.checkChecksum()) {
-					if (received.getNumber() == udp.getReceivedDatagrams() + 1) {
-						udp.increaseReceivedDatagrams();
-						if (received.getType() != 1) sendAck(String.valueOf(received.getNumber()));
+					if (received.getNumber() == udp.getReceivedDatagrams() + 1 || received.getType() == 1) {
+						if (received.getType() != 1) {
+							udp.increaseReceivedDatagrams();
+							sendAck(String.valueOf(received.getNumber()));
+						}
 
 						switch (received.getType()) {
 							case 1: // Ack
@@ -96,6 +99,8 @@ public class ProcessMessage extends Thread {
 							case 20:    // Someone tried to guess the word
 								respondType20(received);
 								break;
+							case 21:    // Ping
+								break;
 							default:
 								System.out.println("Unknown type");
 								break;
@@ -117,7 +122,7 @@ public class ProcessMessage extends Thread {
 	 * @param receivedNumber number that should be acknowledged
 	 */
 	private void sendAck(String receivedNumber) {
-		udp.sendMessage(new Message(udp.increaseSentDatagrams(), 1, window.getNick().length() + 1 +
+		udp.sendMessage(new Message(udp.getSentDatagrams(), 1, window.getNick().length() + 1 +
 				receivedNumber.length(), window.getNick() + "," + receivedNumber), receiver.getSentMessages(), false);
 	}
 
@@ -172,6 +177,7 @@ public class ProcessMessage extends Thread {
 
 	private void respondType9(Message received) {
 		window.setStatusLabelText(received.getData() + " disconnected");
+		window.getGame().setMyMove(false);
 	}
 
 	private void respondType10() {

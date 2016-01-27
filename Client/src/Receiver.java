@@ -51,6 +51,15 @@ public class Receiver extends Thread {
 		this.start();
 	}
 
+	private void sendPing() {
+		if (window.getGame() != null) {
+			udp.getLock().lock();
+			Message m = new Message(udp.increaseSentDatagrams(), 21, window.getNick().length(), window.getNick());
+			udp.sendMessage(m, sentMessages, true);
+			udp.getLock().unlock();
+		}
+	}
+
 	/**
 	 * Run method of the thread. Receives message from socket and adds it to the buffer
 	 */
@@ -60,6 +69,7 @@ public class Receiver extends Thread {
 			try {
 				Message received = udp.receiveMessage();
 				checkSentMessages();
+				sendPing();
 				if (received.getType() != -1) {
 					buffer.add(received);
 					m.release();
@@ -69,6 +79,7 @@ public class Receiver extends Thread {
 				}
 			} catch (IOException e) {
 				checkSentMessages();
+				sendPing();
 			}
 		}
 	}
@@ -84,7 +95,8 @@ public class Receiver extends Thread {
 				if (now - sentMessages.get(i).getSentTime() > 10 * TIME_TO_ACK) {
 					window.setStatusLabelText("Server unreachable");
 					sentMessages = new ArrayList<Message>();
-					continue;
+					window.setGame(null);
+					break;
 				}
 				Message m = sentMessages.remove(i);
 				udp.sendMessage(m, sentMessages, false);
