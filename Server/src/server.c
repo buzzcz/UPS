@@ -55,8 +55,18 @@ struct sockaddr_in create_server_socket(int *server_socket, char *addr, int port
 	server_addr.sin_family = AF_INET;
 	if (strcmp(addr, "INADDR_ANY") == 0) server_addr.sin_addr.s_addr = htons(INADDR_ANY);
 	else if (strcmp(addr, "LOCALHOST") == 0) server_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	else server_addr.sin_addr.s_addr = inet_addr(addr);
-	server_addr.sin_port = htons(port);
+	else {
+		i = inet_pton(server_addr.sin_family, addr, &server_addr.sin_addr);
+		if (i != 1) {
+			printf("IP address not valid\n");
+			exit(-1);
+		}
+	}
+	if (port > 1 && port < 65535) server_addr.sin_port = htons(port);
+	else {
+		printf("Port is not valid\n");
+		exit(-1);
+	}
 
 	return server_addr;
 }
@@ -84,8 +94,8 @@ void bind_server_socket(int server_socket, struct sockaddr_in server_addr, sockl
  * Prints statistics
  * */
 void print_stats() {
-	printf("\nReceived: %d\nUnparseable: %d\nSent: %d\nResent: %d\n\n", number_of_received, number_of_unparseable,
-	       number_of_sent, number_of_resent);
+	printf("\nReceived: %ld\nUnparseable: %ld\nSent: %ld\nResent: %ld\nReceived bytes: %ld\nSent bytes: %ld\n\n",
+	       number_of_received, number_of_unparseable, number_of_sent, number_of_resent, bytes_received, bytes_sent);
 }
 
 /*
@@ -131,6 +141,8 @@ void init_server(int server_socket) {
 	number_of_unparseable = 0;
 	number_of_sent = 0;
 	number_of_resent = 0;
+	bytes_received = 0;
+	bytes_sent = 0;
 
 	thread_data.server_socket = server_socket;
 	thread_data.games = &games;
@@ -166,6 +178,7 @@ struct message receive_message(int server_socket) {
 		return m;
 	} else {
 		number_of_received++;
+		bytes_received += read_bytes;
 		received[read_bytes] = '\0';
 		printf("Client sent: %s\n", received);
 
@@ -237,36 +250,29 @@ void check_sent_messages(int server_socket) {
 
 		clock_gettime(CLOCK_REALTIME, &time);
 		now = time.tv_sec;
-		if (now - iter->sent_time > TIME_TO_ACK) {
-			if (now - iter->sent_time > 10 * TIME_TO_ACK) {
-				printf("Connection with %s lost, ending game\n", iter->player->name);
-				send_unreachable_client(server_socket, &games, iter->player, &sent_messages);
+		if (difftime(now, iter->sent_time) > TIME_TO_ACK) {
+			if (difftime(now, iter->sent_time) > 10 * TIME_TO_ACK) {
 				if (prev != NULL) prev->next = iter->next;
 				else next = iter->next;
 				iter->next = NULL;
-				free_list(iter);
 				if (prev == NULL) {
 					iter = next;
 					sent_messages = next;
 				}
 				else iter = prev->next;
+				printf("Connection with %s lost, ending game\n", iter->player->name);
+				send_unreachable_client(server_socket, &games, iter->player, &sent_messages);
+				free(iter);
+				iter = sent_messages;
 				continue;
-			} else if (now - iter->sent_time > 3 * TIME_TO_ACK) {
-				respond_type_8(server_socket, &games, iter->player, &sent_messages);
-				iter->player->state = 0;
+			} else if (difftime(now, iter->sent_time) > 3 * TIME_TO_ACK) {
+				if (iter->player->state != 0) {
+					iter->player->state = 0;
+					send_not_responding_client(server_socket, &games, iter->player, &sent_messages);
+				}
 			}
-			if (prev != NULL) prev->next = iter->next;
-			else next = iter->next;
-			iter->next = NULL;
 			send_message(server_socket, iter->player, iter->message, &sent_messages, 0);
 			number_of_resent++;
-			free_list(iter);
-			if (prev == NULL) {
-				iter = next;
-				sent_messages = next;
-			}
-			else iter = prev->next;
-			continue;
 		}
 		prev = iter;
 		iter = iter->next;
@@ -275,14 +281,15 @@ void check_sent_messages(int server_socket) {
 }
 
 /*
- * Creates and starts consumer-like threads that process messages
+ * Creates and starts consumer-like threads that process messages and one thread that sends ping
  * */
 void run_threads() {
 	int i;
 
-	for (i = 0; i < NUMBER_OF_THREADS; i++) {
+	for (i = 0; i < NUMBER_OF_THREADS - 1; i++) {
 		pthread_create(&th[i], NULL, respond, (void *) &thread_data);
 	}
+	pthread_create(&th[NUMBER_OF_THREADS - 1], NULL, ping, (void *) &thread_data);
 }
 
 /*

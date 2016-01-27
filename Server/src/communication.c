@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "structures.h"
 #include "game.h"
 #include "communication.h"
@@ -124,8 +125,9 @@ void send_message(int server_socket, struct player *player, struct message m, st
 	printf("Server is sending: %s to %s\n", message, player->name);
 	sendto(server_socket, message, strlen(message), 0, (struct sockaddr *) &(player->client_addr),
 	       player->client_addr_length);
-	add_message(sent_messages, m, player, new_time);
+	if (new_time == 1) add_message(sent_messages, m, player, new_time);
 	number_of_sent++;
+	bytes_sent += strlen(message);
 
 	free(message);
 }
@@ -370,6 +372,7 @@ void respond_type_5(int server_socket, struct game **games, struct player *playe
 		message.data = malloc((size_t) size + 1);
 		sprintf(message.data, "%d,%d,%s,%s,%d", game->state, game->players_count, word, game->guessed_letters,
 		        player->wrong_guesses);
+		printf("Data: %s\n", message.data);
 		calculate_checksum(&message);
 
 		send_message(server_socket, player, message, sent_messages, 1);
@@ -377,7 +380,8 @@ void respond_type_5(int server_socket, struct game **games, struct player *playe
 		free(message.data);
 
 		game->wait_for--;
-		if (game->wait_for == 0) {
+		if (game->wait_for <= 0) {
+			game->wait_for = 0;
 			game->state = 1;
 			send_your_move(server_socket, game, sent_messages, 0);
 		}
@@ -414,10 +418,11 @@ void respond_type_8(int server_socket, struct game **games, struct player *playe
 		sprintf(message.data, "%s", player->name);
 
 		game = find_game(games, player->game);
-		game->state = 2;
+		if (game->state != 0) game->state = 2;
 		game->wait_for++;
 		for (i = 0; i < game->players_count; i++) {
-			if (strcmp(game->players[i]->name, player->name) != 0) {
+			if (game->players[i] != NULL && strcmp(game->players[i]->name, player->name) != 0 &&
+			    game->players[i]->state != 0) {
 				message.number = game->players[i]->sent_datagrams++;
 				calculate_checksum(&message);
 				send_message(server_socket, game->players[i], message, sent_messages, 1);
@@ -466,7 +471,7 @@ void send_win(int server_socket, struct player *player, struct game **games, str
 		}
 	}
 
-	remove_game(games, game->id);
+	remove_game(games, game->id, sent_messages);
 }
 
 /*
@@ -615,6 +620,33 @@ void respond_type_19(int server_socket, struct game **games, struct player *play
 	}
 }
 
+void send_not_responding_client(int server_socket, struct game **games, struct player *player,
+                                struct list **sent_messages) {
+	struct message m;
+	struct game *game;
+	int i;
+
+	if (player != NULL) {
+		m.type = 22;
+		m.data_size = (int) strlen(player->name);
+		m.data = malloc(m.data_size * sizeof(char) + 1);
+		strcpy(m.data, player->name);
+
+		game = find_game(games, player->game);
+		if (game != NULL) {
+			for (i = 0; i < game->players_count; i++) {
+				if (game->players[i] != NULL && strcmp(game->players[i]->name, player->name) != 0) {
+					m.number = game->players[i]->sent_datagrams++;
+					calculate_checksum(&m);
+					send_message(server_socket, game->players[i], m, sent_messages, 1);
+				}
+			}
+			send_your_move(server_socket, game, sent_messages, 0);
+		}
+		free(m.data);
+	}
+}
+
 /*
  * Sends a notification to other players about an unreachable player and removes a game
  *
@@ -633,23 +665,25 @@ void send_unreachable_client(int server_socket, struct game **games, struct play
 	struct game *game;
 	int i;
 
-	m.type = 2;
-	m.data_size = (int) strlen(player->name);
-	m.data = malloc(m.data_size * sizeof(char) + 1);
-	strcpy(m.data, player->name);
+	if (player != NULL) {
+		m.type = 2;
+		m.data_size = (int) strlen(player->name);
+		m.data = malloc(m.data_size * sizeof(char) + 1);
+		strcpy(m.data, player->name);
 
-	game = find_game(games, player->game);
-	for (i = 0; i < game->players_count; i++) {
-		if (strcmp(game->players[i]->name, player->name) != 0) {
-			m.number = game->players[i]->sent_datagrams++;
-			calculate_checksum(&m);
-			send_message(server_socket, game->players[i], m, sent_messages, 1);
+		game = find_game(games, player->game);
+		if (game != NULL) {
+			for (i = 0; i < game->players_count; i++) {
+				if (game->players[i] != NULL && strcmp(game->players[i]->name, player->name) != 0) {
+					m.number = game->players[i]->sent_datagrams++;
+					calculate_checksum(&m);
+					send_message(server_socket, game->players[i], m, sent_messages, 1);
+				}
+			}
+			remove_game(games, game->id, sent_messages);
 		}
+		free(m.data);
 	}
-
-	free(m.data);
-
-	remove_game(games, game->id);
 }
 
 
@@ -684,22 +718,15 @@ void *respond(void *thread_data) {
 				player->client_addr = received->client_addr;
 				player->client_addr_length = received->client_addr_length;
 			}
-			if (player == NULL || received->number == player->received_datagrams + 1 || received->type == 1) {
+			if (player == NULL || received->number == player->received_datagrams + 1 || received->type == 1 ||
+			    received->type == 21) {
 				if (player != NULL) {
 					if (received->type != 1) {
-						player->received_datagrams++;
+						if (received->type != 21) player->received_datagrams++;
 						send_ack(server_socket, player, *received);
 					}
 					if (player->state == 0) {
-						struct game *game;
-
 						player->state = 1;
-						game = find_game(games, player->game);
-						game->wait_for--;
-						if (game->wait_for == 0) {
-							game->state = 1;
-							send_your_move(server_socket, game, data->sent_messages, 0);
-						}
 					}
 				}
 
@@ -722,6 +749,8 @@ void *respond(void *thread_data) {
 					case 19:    // Guessing the word
 						respond_type_19(server_socket, games, player, *received, data->sent_messages);
 						break;
+					case 21:
+						break;
 					default:
 						printf("Unknown type\n");
 						break;
@@ -738,6 +767,58 @@ void *respond(void *thread_data) {
 		pthread_mutex_unlock(data->mutex);
 		if (received->nick != NULL) free(received->nick);
 		if (received->data != NULL) free(received->data);
+	}
+	pthread_exit(0);
+}
+
+void *ping(void *thread_data) {
+	struct thread_data *data;
+	int server_socket;
+	struct game **games;
+
+	data = (struct thread_data *) thread_data;
+	server_socket = data->server_socket;
+	games = data->games;
+
+	while (1) {
+		struct game *iter;
+
+		pthread_mutex_lock(data->mutex);
+		iter = *games;
+		while (iter != NULL) {
+			int i;
+			struct message m;
+
+			m.type = 21;
+			m.data_size = 0;
+			m.data = NULL;
+			for (i = 0; i < iter->players_count; i++) {
+				if (iter->players[i] != NULL) {
+					struct list *list;
+					int sent;
+
+					list = *data->sent_messages;
+					sent = 0;
+					while (list != NULL) {
+						if (strcmp(list->player->name, iter->players[i]->name) == 0 && list->message.type == 21) {
+							send_message(server_socket, list->player, list->message, data->sent_messages, 0);
+							sent = 1;
+							break;
+						}
+						list = list->next;
+					}
+
+					if (sent == 0) {
+						m.number = iter->players[i]->sent_datagrams;
+						calculate_checksum(&m);
+						send_message(server_socket, iter->players[i], m, data->sent_messages, 1);
+					}
+				}
+			}
+			iter = iter->next;
+		}
+		pthread_mutex_unlock(data->mutex);
+		sleep(TIME_TO_ACK + 1);
 	}
 	pthread_exit(0);
 }

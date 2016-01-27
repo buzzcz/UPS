@@ -265,7 +265,7 @@ struct game *find_game(struct game **games, int id) {
  *
  * id: id of the game to be removed
  * */
-void remove_game(struct game **games, int id) {
+void remove_game(struct game **games, int id, struct list **sent_messages) {
 	struct game *iter, *prev, *next;
 
 	iter = *games;
@@ -280,7 +280,30 @@ void remove_game(struct game **games, int id) {
 			iter->next = NULL;
 			free(iter->guessed_word);
 			for (i = 0; i < iter->players_count; i++) {
-				if (iter->players[i] != NULL) free_player(iter->players[i]);
+				if (iter->players[i] != NULL) {
+					struct list *list, *list_prev, *list_next;
+
+					free_player(iter->players[i]);
+					list = *sent_messages;
+					list_prev = NULL;
+					list_next = NULL;
+					while (list != NULL) {
+						if (strcmp(list->player->name, iter->players[i]->name) == 0) {
+							if (list_prev != NULL) list_prev->next = list->next;
+							else list_next = list->next;
+							list->next = NULL;
+							free(list);
+							if (list_prev == NULL) {
+								list = list_next;
+								*sent_messages = list_next;
+							}
+							else list = list_prev->next;
+							continue;
+						}
+						list_prev = list;
+						list = list->next;
+					}
+				}
 			}
 			free(iter->players);
 			free(iter);

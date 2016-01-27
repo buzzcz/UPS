@@ -13,6 +13,6 @@ struct game *add_player_to_game(struct game **games, struct player *player);
 
 struct game *find_game(struct game **games, int id);
 
-void remove_game(struct game **games, int id);
+void remove_game(struct game **games, int id, struct list **sent_messages);
 
 #endif

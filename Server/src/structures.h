@@ -14,6 +14,19 @@
 /*Constant for a buffer size of received / sent message*/
 #define BUFFER_SIZE 65000
 
+/*Number of received datagrams since start of server*/
+long number_of_received;
+/*Number of unparseable datagrams since start of server*/
+long number_of_unparseable;
+/*Number of sent datagrams since start of server*/
+long number_of_sent;
+/*Number of resent datagrams since start of server*/
+long number_of_resent;
+/*Number of received bytes since start of server*/
+long bytes_received;
+/*Number of sent bytes since start of server*/
+long bytes_sent;
+
 /*
  * Structure for messages
  * */
@@ -98,7 +111,7 @@ struct game {
 	int state;
 	/*Number of players supposed to be in a game*/
 	int players_count;
-	/*For how many players is the game waiting*/
+	/*For how many disconnected players is the game waiting*/
 	int wait_for;
 	/*Index of player who made a move/is supposed to make a move*/
 	int players_move;
