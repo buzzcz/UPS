@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -49,27 +51,27 @@ public class Connection {
 	/**
 	 * Number of received datagrams since start of the client
 	 */
-	private int numberOfReceived;
+	private long numberOfReceived;
 	/**
 	 * Number of unparseable datagrams since start of the client
 	 */
-	private int numberOfUnparseable;
+	private long numberOfUnparseable;
 	/**
 	 * Number of sent datagrams since start of the client
 	 */
-	private int numberOfSent;
+	private long numberOfSent;
 	/**
 	 * Number of resent datagrams since start of the client
 	 */
-	private int numberOfResent;
+	private long numberOfResent;
 	/**
 	 * Number of received bytes since start of the client
 	 */
-	private int bytesReceived;
+	private long bytesReceived;
 	/**
 	 * Number of sent bytes since start of the client
 	 */
-	private int bytesSent;
+	private long bytesSent;
 
 	/******************************************************************************************************************/
 
@@ -128,8 +130,16 @@ public class Connection {
 			lock.lock();
 			socket.send(send);
 			if (message.getType() != 1) {
-				if (newTime) message.setSentTime(new Date().getTime());
-				sentMessages.add(message);
+				if (newTime) {
+					message.setSentTime(new Date().getTime());
+					sentMessages.add(message);
+					Collections.sort(sentMessages, new Comparator<Message>() {
+						@Override
+						public int compare(Message o1, Message o2) {
+							return ((Integer)o1.getNumber()).compareTo(o2.getNumber());
+						}
+					});
+				}
 			}
 			numberOfSent++;
 			bytesSent += message.getMessageByte().length;
@@ -239,31 +249,34 @@ public class Connection {
 	 *
 	 * @return number of received datagrams since start of the client
 	 */
-	public int getNumberOfReceived() {
+	public long getNumberOfReceived() {
 		return numberOfReceived;
 	}
 
 	/**
 	 * Getter for number of unparseable datagrams since start of the client
+	 *
 	 * @return number of unparseable datagrams since start of the client
 	 */
-	public int getNumberOfUnparseable() {
+	public long getNumberOfUnparseable() {
 		return numberOfUnparseable;
 	}
 
 	/**
 	 * Getter for number of sent datagrams since start of the client
+	 *
 	 * @return number of sent datagrams since start of the client
 	 */
-	public int getNumberOfSent() {
+	public long getNumberOfSent() {
 		return numberOfSent;
 	}
 
 	/**
 	 * Getter for number of resent datagrams since start of the client
+	 *
 	 * @return number of resent datagrams since start of the client
 	 */
-	public int getNumberOfResent() {
+	public long getNumberOfResent() {
 		return numberOfResent;
 	}
 
@@ -283,17 +296,19 @@ public class Connection {
 
 	/**
 	 * Getter for number of received bytes since start of the client
+	 *
 	 * @return number of received bytes since start of the client
 	 */
-	public int getBytesReceived() {
+	public long getBytesReceived() {
 		return bytesReceived;
 	}
 
 	/**
 	 * Getter for number of sent bytes since start of the client
+	 *
 	 * @return number of sent bytes since start of the client
 	 */
-	public int getBytesSent() {
+	public long getBytesSent() {
 		return bytesSent;
 	}
 

@@ -47,9 +47,10 @@ public class ProcessMessage extends Thread {
 				received = receiver.getMessageFromBuffer();
 				udp.getLock().lock();
 				if (received.checkChecksum()) {
-					if (received.getNumber() == udp.getReceivedDatagrams() + 1 || received.getType() == 1) {
+					if (received.getNumber() == udp.getReceivedDatagrams() + 1 || received.getType() == 1 || received
+							.getType() == 21) {
 						if (received.getType() != 1) {
-							udp.increaseReceivedDatagrams();
+							if (received.getType() != 21) udp.increaseReceivedDatagrams();
 							sendAck(String.valueOf(received.getNumber()));
 						}
 
@@ -101,13 +102,18 @@ public class ProcessMessage extends Thread {
 								break;
 							case 21:    // Ping
 								break;
+							case 22:    // Not responding player
+								respondType22(received);
+								break;
 							default:
 								System.out.println("Unknown type");
 								break;
 						}
 					} else if (received.getNumber() <= udp.getReceivedDatagrams()) {
 						sendAck(String.valueOf(received.getNumber()));
-					} else System.out.println("Number not correct: " + received.getNumber() + ", expecting: " + (udp.getReceivedDatagrams() + 1));
+					} else
+						System.out.println("Number not correct: " + received.getNumber() + ", expecting: " + (udp
+								.getReceivedDatagrams() + 1));
 				} else System.out.println("Wrong checksum");
 				udp.getLock().unlock();
 			}
@@ -129,6 +135,7 @@ public class ProcessMessage extends Thread {
 	private void respondType2(Message received) {
 		window.setStatusLabelText("End of game - " + received.getData() + " is unreachable");
 		window.setGame(null);
+		receiver.setSentMessages(new ArrayList<Message>());
 	}
 
 	private void respondType4(Message received) {
@@ -194,12 +201,14 @@ public class ProcessMessage extends Thread {
 			window.setGuessedWordLabelText(window.getLastGuessed());
 		}
 		window.setGame(null);
+		receiver.setSentMessages(new ArrayList<Message>());
 	}
 
 	private void respondType13(Message received) {
 		window.setStatusLabelText("End of game - " + received.getData() + " won");
 		if (window.getGuessedWordLabelText().contains("_")) window.setGuessedWordLabelText(window.getLastGuessed());
 		window.setGame(null);
+		receiver.setSentMessages(new ArrayList<Message>());
 	}
 
 	private void respondType14() {
@@ -247,5 +256,9 @@ public class ProcessMessage extends Thread {
 		String data[] = received.getData().split(",");
 		window.setStatusLabelText(data[0] + " guessed word " + data[1]);
 		window.setLastGuessed(data[1]);
+	}
+
+	private void respondType22(Message received) {
+		window.setStatusLabelText("Player " + received.getData() + " is not responding for a while");
 	}
 }

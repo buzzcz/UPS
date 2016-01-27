@@ -21,6 +21,7 @@ public class Window extends JFrame {
 	 * Thread that will process messages
 	 */
 	private ProcessMessage consumer;
+	private Thread ping;
 	/**
 	 * Game in which a player is
 	 */
@@ -68,6 +69,35 @@ public class Window extends JFrame {
 		udp = new Connection(host, port);
 		receiver = new Receiver(udp, this);
 		consumer = new ProcessMessage(udp, receiver, this);
+		ping = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						if (game != null) {
+							udp.getLock().lock();
+							boolean sent = false;
+							for (int i = 0; i < receiver.getSentMessages().size(); i++) {
+								if (receiver.getSentMessages().get(i).getType() == 21) {
+									udp.sendMessage(receiver.getSentMessages().get(i), receiver.getSentMessages(),
+											false);
+									sent = true;
+								}
+							}
+							if (!sent) {
+								Message m = new Message(udp.getSentDatagrams(), 21, nick.length(), nick);
+								udp.sendMessage(m, receiver.getSentMessages(), true);
+							}
+							udp.getLock().unlock();
+						}
+						Thread.sleep(Receiver.TIME_TO_ACK + 1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		});
+		ping.start();
 		game = null;
 		nick = null;
 		opponents = 0;
@@ -129,28 +159,35 @@ public class Window extends JFrame {
 
 		final JMenu gameMenu = new JMenu("Game");
 		gameMenu.setMnemonic(KeyEvent.VK_G);
-		JMenuItem newGame = new JMenuItem("New Game");
+		final JMenuItem newGame = new JMenuItem("New Game");
 		newGame.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, KeyEvent.CTRL_MASK));
 		newGame.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JTextField nickField = new JTextField();
-				SpinnerNumberModel sModel = new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1);
-				JSpinner opponentsSpinner = new JSpinner(sModel);
-				JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField, new JLabel
-						("Enter" +
-						" " + "number of opponents:"), opponentsSpinner};
-				int option = JOptionPane.showOptionDialog(Window.this, components, "New game", JOptionPane
-						.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
-				if (option == JOptionPane.OK_OPTION) {
-					nick = nickField.getText();
-					udp.setSentDatagrams(0);
-					udp.setReceivedDatagrams(0);
-					opponents = (Integer) opponentsSpinner.getValue();
-					Message m = new Message(udp.increaseSentDatagrams(), 3, nick.length() +
-							opponentsSpinner.getValue().toString().length() + 1, nick + "," +
-							opponentsSpinner.getValue().toString());
-					udp.sendMessage(m, receiver.getSentMessages(), true);
+				boolean ok = false;
+				while (!ok) {
+					JTextField nickField = new JTextField();
+					SpinnerNumberModel sModel = new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1);
+					JSpinner opponentsSpinner = new JSpinner(sModel);
+					JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField, new JLabel
+							("Enter" +
+
+							" " + "number of opponents:"), opponentsSpinner};
+					int option = JOptionPane.showOptionDialog(Window.this, components, "New game", JOptionPane
+							.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+					if (option == JOptionPane.OK_OPTION) {
+						nick = nickField.getText();
+						if (!nick.trim().isEmpty()) {
+							ok = true;
+							udp.setSentDatagrams(0);
+							udp.setReceivedDatagrams(0);
+							opponents = (Integer) opponentsSpinner.getValue();
+							Message m = new Message(udp.increaseSentDatagrams(), 3, nick.length() +
+									opponentsSpinner.getValue().toString().length() + 1, nick + "," +
+									opponentsSpinner.getValue().toString());
+							udp.sendMessage(m, receiver.getSentMessages(), true);
+						}
+					} else ok = true;
 				}
 			}
 		});
@@ -277,8 +314,8 @@ public class Window extends JFrame {
 			@Override
 			public void keyReleased(KeyEvent e) {
 				if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
-						.getKeyChar() == '\'' || e.getKeyChar() == ' ') && !alreadyGuessedLabel.getText().contains(e
-						.getKeyChar() + "")) {
+						.getKeyChar() == '\'' || e.getKeyChar() == ' ') && !alreadyGuessedLabel.getText().contains((e
+						.getKeyChar() + "").toUpperCase())) {
 					String data = e.getKeyChar() + "";
 					Message m = new Message(udp.increaseSentDatagrams(), 16, nick.length() + 1 + data.length(), nick +
 							"," + data.toUpperCase());
