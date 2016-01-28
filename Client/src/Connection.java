@@ -86,17 +86,20 @@ public class Connection {
 			this.host = InetAddress.getByName(host);
 		} catch (UnknownHostException e) {
 			System.out.println("Host " + host + " unknown");
+			System.exit(-1);
 		}
 		this.port = port;
 		try {
 			socket = new DatagramSocket();
 		} catch (SocketException e) {
 			System.out.println("Socket could not be made");
+			System.exit(-1);
 		}
 		try {
 			socket.setSoTimeout(TIMEOUT);
 		} catch (SocketException e) {
 			System.out.println("Socket timeout could not be set");
+			System.exit(-1);
 		}
 		lock = new ReentrantLock();
 		sentDatagrams = 0;

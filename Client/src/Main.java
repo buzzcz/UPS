@@ -6,13 +6,21 @@ import java.awt.*;
 public class Main {
 
 	public static void main(final String[] args) {
-//		TODO check args
+		if (args.length != 2) {
+			System.out.println("Client must be started with 2 parameters: 1) server's address, 2) server's port");
+			System.exit(-1);
+		}
 		try {
 			EventQueue.invokeLater(new Runnable() {
 				@Override
 				public void run() {
-					Window window = new Window(args[0], Integer.parseInt(args[1]));
-					window.setVisible(true);
+					try {
+						Window window = new Window(args[0], Integer.parseInt(args[1]));
+						window.setVisible(true);
+					} catch (NumberFormatException e) {
+						System.out.println("Port is not a valid number");
+						System.exit(-1);
+					}
 				}
 			});
 		} catch (Exception e) {
