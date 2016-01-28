@@ -21,6 +21,9 @@ public class Window extends JFrame {
 	 * Thread that will process messages
 	 */
 	private ProcessMessage consumer;
+	/**
+	 * Thread that will send ping messages
+	 */
 	private Thread ping;
 	/**
 	 * Game in which a player is
@@ -221,13 +224,7 @@ public class Window extends JFrame {
 		gameMenu.add(reconnect);
 		gameMenu.add(exit);
 
-		JMenu helpMenu = new JMenu("Help");
-		helpMenu.setMnemonic(KeyEvent.VK_H);
-		JMenuItem about = new JMenuItem("About");
-		helpMenu.add(about);
-
 		menu.add(gameMenu);
-		menu.add(helpMenu);
 
 		setJMenuBar(menu);
 	}

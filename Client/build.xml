@@ -33,6 +33,7 @@
 	<arg value="-f"/>
         <arg value="Canvas.class"/>
         <arg value="Connection.class"/>
+        <arg value="Connection$1.class"/>
         <arg value="Game.class"/>
         <arg value="Main.class"/>
         <arg value="Main$1.class"/>
@@ -49,6 +50,7 @@
         <arg value="Window$7.class"/>
         <arg value="Window$8.class"/>
         <arg value="Window$9.class"/>
+        <arg value="Window$10.class"/>
     </exec>
 </target>
 
