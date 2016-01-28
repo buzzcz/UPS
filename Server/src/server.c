@@ -238,11 +238,9 @@ struct message receive_message(int server_socket) {
  * server_socket: socket to be used for sending messages
  * */
 void check_sent_messages(int server_socket) {
-	struct list *iter, *prev, *next;
+	struct list *iter;
 
 	iter = sent_messages;
-	prev = NULL;
-	next = NULL;
 	pthread_mutex_lock(&mutex);
 	while (iter != NULL) {
 		struct timespec time;
@@ -252,17 +250,8 @@ void check_sent_messages(int server_socket) {
 		now = time.tv_sec;
 		if (difftime(now, iter->sent_time) > TIME_TO_ACK) {
 			if (difftime(now, iter->sent_time) > 10 * TIME_TO_ACK) {
-				if (prev != NULL) prev->next = iter->next;
-				else next = iter->next;
-				iter->next = NULL;
-				if (prev == NULL) {
-					iter = next;
-					sent_messages = next;
-				}
-				else iter = prev->next;
 				printf("Connection with %s lost, ending game\n", iter->player->name);
 				send_unreachable_client(server_socket, &games, iter->player, &sent_messages);
-				free(iter);
 				iter = sent_messages;
 				continue;
 			} else if (difftime(now, iter->sent_time) > 3 * TIME_TO_ACK) {
@@ -274,7 +263,6 @@ void check_sent_messages(int server_socket) {
 			send_message(server_socket, iter->player, iter->message, &sent_messages, 0);
 			number_of_resent++;
 		}
-		prev = iter;
 		iter = iter->next;
 	}
 	pthread_mutex_unlock(&mutex);

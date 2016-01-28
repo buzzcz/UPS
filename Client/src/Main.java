@@ -6,6 +6,7 @@ import java.awt.*;
 public class Main {
 
 	public static void main(final String[] args) {
+//		TODO check args
 		try {
 			EventQueue.invokeLater(new Runnable() {
 				@Override
