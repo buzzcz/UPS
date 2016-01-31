@@ -79,7 +79,7 @@ void ack_message(struct list **sent_messages, struct message *ack) {
 		if (iter->message.number == ack_number && strcmp(iter->player->name, ack->nick) == 0) {
 			if (prev != NULL) prev->next = iter->next;
 			else next = iter->next;
-			if (iter->player->game == -1 && iter->message.type == 6) {
+			if (iter->player->game == -1) {
 				free(iter->player->name);
 				free(iter->player);
 			}

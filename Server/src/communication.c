@@ -351,29 +351,37 @@ void respond_type_5(int server_socket, struct game **games, struct player *playe
 	else game = find_game(games, player->game);
 
 	if (game != NULL) {
-		word = malloc(strlen(game->guessed_word) + 1);
-		memset(word, '-', strlen(game->guessed_word));
-		game->guessed_word[strlen(game->guessed_word)] = '\0';
-		for (i = 0; i < 28; i++) {
-			if (game->guessed_letters[i] != '0') {
-				for (j = 0; j < strlen(game->guessed_word); j++) {
-					if (game->guessed_word[j] == game->guessed_letters[i]) word[j] = game->guessed_letters[i];
+		if (game->state != 0) {
+			word = malloc(strlen(game->guessed_word) + 1);
+			memset(word, '-', strlen(game->guessed_word));
+			word[strlen(game->guessed_word)] = '\0';
+			for (i = 0; i < 28; i++) {
+				if (game->guessed_letters[i] != '0') {
+					for (j = 0; j < strlen(game->guessed_word); j++) {
+						if (game->guessed_word[j] == game->guessed_letters[i]) word[j] = game->guessed_letters[i];
+					}
 				}
 			}
 		}
 
 		size = number_length(game->state) + 1;
 		size += number_length(game->players_count) + 1;
-		size += (int) strlen(game->guessed_word) + 1;
-		size += 27 + 1;
-		size += number_length(player->wrong_guesses);
+		if (game->state != 0) {
+			size += (int) strlen(game->guessed_word) + 1;
+			size += 27 + 1;
+			size += number_length(player->wrong_guesses);
+		}
 
 		message.number = player->sent_datagrams++;
 		message.type = 6;
 		message.data_size = size;
 		message.data = malloc((size_t) size + 1);
-		sprintf(message.data, "%d,%d,%s,%s,%d", game->state, game->players_count, word, game->guessed_letters,
-		        player->wrong_guesses);
+		if (game->state != 0) {
+			sprintf(message.data, "%d,%d,%s,%s,%d", game->state, game->players_count, word, game->guessed_letters,
+			        player->wrong_guesses);
+		} else {
+			sprintf(message.data, "%d,%d,,,", game->state, game->players_count);
+		}
 		printf("Data: %s\n", message.data);
 		calculate_checksum(&message);
 
@@ -382,7 +390,11 @@ void respond_type_5(int server_socket, struct game **games, struct player *playe
 		free(message.data);
 
 		game->wait_for--;
-		if (game->wait_for <= 0) {
+		j = 0;
+		for (i = 0; i < game->players_count; i++) {
+			if (game->players[i] != NULL) j++;
+		}
+		if (game->wait_for <= 0 && j == game->players_count) {
 			game->wait_for = 0;
 			game->state = 1;
 			send_your_move(server_socket, game, sent_messages, 0);
@@ -728,8 +740,7 @@ void *respond(void *thread_data) {
 
 		if (check_checksum(received) == 1) {
 			player = find_player(games, received->nick);
-			if (player != NULL &&
-			    ((find_game(games, player->game)->state == 2 && received->type == 5) || received->type == 3)) {
+			if (player != NULL && (received->type == 5 || received->type == 3)) {
 				player->sent_datagrams = 1;
 				player->received_datagrams = -1;
 				player->client_addr = received->client_addr;
@@ -745,6 +756,10 @@ void *respond(void *thread_data) {
 					if (player->state == 0) {
 						player->state = 1;
 					}
+				} else if (player == NULL && received->type != 3 && received->type != 5) {
+					printf("Unknown player\n");
+					respond_type_5(server_socket, games, player, *received, data->sent_messages);
+					continue;
 				}
 
 				switch (received->type) {
