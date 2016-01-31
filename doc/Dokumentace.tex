@@ -41,56 +41,56 @@
 	\section{Protokol}
 	Z důvodu použití protokolu UDP bude potřeba řešit možnost ztráty, případně duplicity zpráv, nebo jejich špatné pořadí a poškození dat během přenosu. To bude vyřešeno tak, že každý zpráva bude obsahovat pořadové číslo a bude se na něj vyžadovat odpověď. Možnost ztráty spojení bude vyřešena tak, že se zprávy budou posílat opakovaně, dokud nebudou potvrzeny, a pokud klient některou nepotvrdí do stanovené doby, bude prohlášen za odpojeného. Stejně tak pokud neodpoví server, bude prohlášen za nedostupný. Zároveň se bude jednou za čas posílat zpráva typu \emph{“ping”} proto, aby se zamezilo výpadku spojení během tahu, tedy v době, kdy se žádné zprávy nezasílají. Možnost poškození dat během přenosu bude vyřešena pomocí \emph{checksumy}.
 
-	Komunikační protokol bude textový s oddělovačem \emph{‘;’}. Bude se skládat z pěti částí - čísla zprávy, typu zprávy, kontrolního součtu, velikosti dat a dat. Data budou jako oddělovač používat \emph{‘,’}. Klient bude pro jeho identifikaci serverem posílat v každé zprávě své jméno.
+	Komunikační protokol bude textový s oddělovačem \emph{‘;’}. Bude se skládat z pěti částí - \textbf{čísla zprávy, typu zprávy, kontrolního součtu, velikosti dat a dat}. Data budou jako oddělovač používat \emph{‘,’}. Klient bude pro jeho identifikaci serverem posílat v každé zprávě své jméno.
 	
 	\subsection{Typy zpráv a dat}
 	Typ zprávy bude uveden číslem, u kterého bude dále popsán význam a naznačeno, jak budou vypadat data. Jako první v popisu bude uvedeno, zda bude paket od klienta na server (C), nebo od severu ke klientovi (S).
 		\begin{enumerate}
-		\item S, C, potvrzení doručení paketu\\
+		\item S, C, \textbf{potvrzení doručení paketu}\\
 		S: číslo potvrzovaného paketu (int)\\
 		C: jméno (string), číslo potvrzovaného paketu (int)
-		\item S, ukončení hry z důvodu nedostupnosti hráče\\
+		\item S, \textbf{ukončení hry z důvodu nedostupnosti hráče}\\
 		Data: jméno (string)
-		\item C, žádost o připojení\\
+		\item C, \textbf{žádost o připojení}\\
 		Data: jméno (string), počet soupeřů (int)
-		\item S, odpověď na žádost o připojení\\
+		\item S, \textbf{odpověď na žádost o připojení}\\
 		Data:	0 pokud vše proběhlo v pořádku, 1 pokud je jméno ve hře a hraje, 2 pokud je jméno ve hře a je odpojené
-		\item C, žádost o navázání přerušené hry\\
+		\item C, \textbf{žádost o navázání přerušené hry}\\
 		Data: jméno (string)
-		\item S, odpověď na žádost o navázání přerušené hry\\
+		\item S, \textbf{odpověď na žádost o navázání přerušené hry}\\
 		Data: stav hry = stav hry (int, pokud -1, tak znamená, že hráč nebyl v žádné hře nalezen), počet hráčů (int), stav hádaného slova (string), již hádaná písmena (string), počet špatně hádaných písmen (int)
-		\item S, začátek hry\\
+		\item S, \textbf{začátek hry}\\
 		Data: počet hádaných písmen (int)
-		\item C, odpojuji se\\
+		\item C, \textbf{odpojuji se}\\
 		Data: jméno (string)
-		\item S, oznámení o někom, kdo se odpojil\\
+		\item S, \textbf{oznámení o někom, kdo se odpojil}\\
 		Data: jméno (string)
-		\item S, prohrál jsi\\
+		\item S, \textbf{prohrál jsi}\\
 		Data: -
-		\item S, oznámení o někom, kdo prohrál\\
+		\item S, \textbf{oznámení o někom, kdo prohrál}\\
 		Data: jméno (string)
-		\item S, vyhrál jsi (= konec hry, uhodl slovo)\\
+		\item S, \textbf{vyhrál jsi} (= konec hry, uhodl slovo)\\
 		Data: -
-		\item S, oznámení o někom, kdo vyhrál\\
+		\item S, \textbf{oznámení o někom, kdo vyhrál}\\
 		Data: jméno (string)
-		\item S, jsi na tahu\\
+		\item S, \textbf{jsi na tahu}\\
 		Data: -
-		\item S, oznámení, kdo je na tahu (pro ostatní hráče)\\
+		\item S, \textbf{oznámení, kdo je na tahu} (pro ostatní hráče)\\
 		Data: jméno (string)
-		\item C, tah\\
+		\item C, \textbf{tah}\\
 		Data: jméno (string), hádané písmeno (char)
-		\item S, odpověď na tah\\
+		\item S, \textbf{odpověď na tah}\\
 		Data: pozice s uhodnutými písmeny (string 0 a 1, kde 1 znamená shodu)
-		\item S, oznámení tahu\\
+		\item S, \textbf{oznámení tahu}\\
 		Data: jméno (string), písmeno (char), pozice s uhodnutými písmeny (string 0 a 1, kde 1 znamená shodu)
-		\item C, hádám celé slovo\\
+		\item C, \textbf{hádám celé slovo}\\
 		Data: jméno (string), slovo (string)
-		\item S, oznámení hádání slova\\
+		\item S, \textbf{oznámení hádání slova}\\
 		Data: jméno (string), slovo (string)
-		\item S, C, ping\\
+		\item S, C, \textbf{ping}\\
 		S: -\\
 		C: jméno (string)
-		\item S, oznámení o klientovi, který chvilku neodpovídá\\
+		\item S, \textbf{oznámení o klientovi, který chvilku neodpovídá}\\
 		Data: jméno (string)
 		\end{enumerate}
 		
@@ -102,7 +102,7 @@
 		
 		V hlavní části server inicializuje některé potřebné proměnné a struktury a spustí vlákna konzumenta (ta, která zpracovávají příchozí zprávy) a jedno vlákno, které periodicky posílá zprávy typu \emph{“ping”} všem klientům. Poté přejde do nekonečné smyčky, ve které se vždy zablokuje při čekání za příchozí zprávu. Pokud zpráva dorazí, server se ji pokusí rozparsovat do struktury \emph{struct message} -- zjistí pořadové číslo, typ zprávy, checksum, velikost dat, data a jméno hráče, který zprávu poslal. Pokud se mu to podaří, přidá zprávu do seznamu \emph{struct list} a upozorní konzumenty na novou zprávu. Pokud ne, tak byla zpráva při přenosu poškozená, případně nastal timeout. Ještě je zkontrolován seznam odeslaných zpráv, ve kterém čekají zprávy na potvrzení. Pokud se nalezne zpráva, která nebyla potvrzena po určitou dobu, odešle se znovu a pokud nebude ani po několika pokusech potvrzena, klient bude prohlášen za nedostupného a hra bude ukončena.
 		
-		Další část programu obsahuje soubor \emph{communication.c}, který implementuje funkce podstatné jak pro komunikaci (např. odeslání zprávy, výpočet checksumy apod.), tak pro zpracování příchozích zpráv (např. kontrolu checksumy, kontrolu pořadového čísla, reakce na zprávy apod.). Vlákno konzumenta čeká blokované na semaforu, dokud není v seznamu příchozích nějaká zpráva. Tu ze seznamu vyjme a zpracuje. Nejprve zkontroluje checksumu, poté pořadové číslo zprávy, pokud vše souhlasí, odešle potvrzení a na zprávu zareaguje dle protokolu výše.
+		Další část programu obsahuje soubor \emph{communication.c}, který implementuje funkce podstatné jak pro komunikaci (např. odeslání zprávy, výpočet checksumy apod.), tak pro zpracování příchozích zpráv (např. kontrolu check-\\sumy, kontrolu pořadového čísla, reakce na zprávy apod.). Vlákno konzumenta čeká blokované na semaforu, dokud není v seznamu příchozích nějaká zpráva. Tu ze seznamu vyjme a zpracuje. Nejprve zkontroluje checksumu, poté pořadové číslo zprávy, pokud vše souhlasí, odešle potvrzení a na zprávu zareaguje dle protokolu výše.
 		
 		Soubor \emph{game.c} obsahuje funkce pro práci se strukturami \emph{struct player} a \emph{struct game}, které uchovávají informace o hráčích a hrách. Mezi tyto funkce patří např. vytvoření nového hráče, přiřazení hráče do hry, vytvoření nové hry, zrušení hry, kontrola tahu hráče atd.
 		
@@ -129,10 +129,16 @@
 	Klient je napsán v jazyce \emph{Java} za použití \emph{JDK 6} a fungovat by tedy měl jak v OS Linux, tak Microsoft Windows. Pro jeho přeložení je tedy potřeba \emph{JDK 6} nebo vyšší, pro spuštění by měl stačit \emph{JRE 6} nebo vyšší. Přiložen je soubor \emph{build.xml} pro automatický překlad nástrojem \emph{ant}, který se provede např. příkazem\\
 	\texttt{ant jar}\\
 	Vytvoří se soubor \emph{Hangman.jar}, který lze spustit např. příkazem\\
-	\texttt{java -jar Hangman.jar localhost 10000}\\
-	Z příkazu je vidět, že se klient spouští se dvěma parametry a to adresou serveru a portem serveru.
+	\texttt{java -jar Hangman.jar}\\
+	Po spuštění je požadováno zadání adresy a portu serveru, viz obrázek \ref{Input}.
 	
-	Po spuštění vypadá klient jako na obrázku \ref{Klient}. Novou hru vytvoříme z nabídky menu \emph{Game}, \emph{New Game} a do dialogu \ref{NewGame} zadáme svou přezdívku a počet protihráčů. Server nás automaticky přiřadí do hry se stejným počtem protihráčů, případně takovou hru vytvoří. Hra se poté ovládá tak, že pokud jste na tahu, tak hádání provedete tak, že daný znak stisknete na klávesnici. Pokud chcete hádat celé slovo, stiskněte klávesu \emph{Enter}. Pokud se ze hry odpojíte, máte v blízké době šanci se do ní opět vrátit a to pomocí nabídky menu \emph{Game}, \emph{Reconnect}, kam zadáte svou původní přezdívku a budete vráceni do hry.
+	Po spuštění vypadá klient jako na obrázku \ref{Klient}. Novou hru vytvoříme z nabídky menu \emph{Game}, \emph{New Game} a do dialogu \ref{NewGame} zadáme svou přezdívku a počet protihráčů. Server nás automaticky přiřadí do hry se stejným počtem protihráčů, případně takovou hru vytvoří. Hra se poté ovládá tak, že pokud jste na tahu, tak hádání provedete tak, že daný znak stisknete na klávesnici. Pokud chcete hádat celé slovo, stiskněte klávesu \emph{Enter}. Pokud se ze hry odpojíte, máte v blízké době šanci se do ní opět vrátit a to pomocí nabídky menu \emph{Game}, \emph{Reconnect}, viz \ref{Reconnect}, kam zadáte svou původní přezdívku a budete vráceni do hry.
+	\begin{figure}[ht!]
+		\centering
+		\caption{Připojení k serveru}
+		\label{Input}
+		\includegraphics[width=6cm]{img/Input.png}
+	\end{figure}
 	\begin{figure}[ht!]
 		\centering
 		\caption{Klient}
