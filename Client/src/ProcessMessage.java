@@ -157,6 +157,9 @@ public class ProcessMessage extends Thread {
 		if (Integer.parseInt(data[0]) == -1) {
 			JOptionPane.showMessageDialog(window, "Game could not have been reconnected, nickname not found in any " +
 					"game", "Reconnect not possible", JOptionPane.ERROR_MESSAGE);
+			return;
+		} else if (Integer.parseInt(data[0]) == 0) {
+			window.setGame(new Game(Integer.parseInt(data[1])));
 		} else {
 			String letters = "";
 			for (int i = 0; i < data[3].length(); i++) {
@@ -164,11 +167,11 @@ public class ProcessMessage extends Thread {
 			}
 			window.setGame(new Game(Integer.parseInt(data[0]), Integer.parseInt(data[1]), data[2].length(), letters,
 					Integer.parseInt(data[4])));
-			window.setStatusLabelText("Reconnected, waiting for other players");
 			window.setGuessedWordLabelText(data[2]);
 			window.getAlreadyGuessedLabel().setText(letters);
 			window.getCanvas().setWrongGuesses(Integer.parseInt(data[4]));
 		}
+		window.setStatusLabelText("Reconnected, waiting for other players");
 	}
 
 	private void respondType7(Message received) {

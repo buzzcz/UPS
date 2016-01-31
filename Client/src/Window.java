@@ -63,12 +63,32 @@ public class Window extends JFrame {
 
 	/**
 	 * Constructor for a window
-	 *
-	 * @param host host address
-	 * @param port port of socket
 	 */
-	public Window(String host, int port) {
+	public Window() {
 		initWindow();
+		this.setVisible(true);
+
+		String host = null;
+		int port = 0;
+		boolean ok = false;
+		while (!ok) {
+			JTextField addressField = new JTextField();
+			SpinnerNumberModel sModel = new SpinnerNumberModel(1, 1, 65535, 1);
+			JSpinner portSpinner = new JSpinner(sModel);
+			JComponent[] components = new JComponent[]{new JLabel("Enter server address:"), addressField, new JLabel
+					("Enter server port:"), portSpinner};
+
+			int option = JOptionPane.showOptionDialog(Window.this, components, "Connection", JOptionPane
+					.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+			if (option == JOptionPane.OK_OPTION) {
+				host = addressField.getText();
+				if (!host.trim().isEmpty()) ok = true;
+				port = Integer.parseInt(portSpinner.getValue().toString());
+			} else {
+				exitClient();
+			}
+		}
+
 		udp = new Connection(host, port);
 		receiver = new Receiver(udp, this);
 		consumer = new ProcessMessage(udp, receiver, this);
@@ -127,9 +147,13 @@ public class Window extends JFrame {
 	}
 
 	private void printStats() {
-		System.out.println("Received: " + udp.getNumberOfReceived() + "\nUnparseable: " + udp.getNumberOfUnparseable()
-				+ "\nSent: " + udp.getNumberOfSent() + "\nResent: " + udp.getNumberOfResent() + "\nReceived bytes: " +
-				udp.getBytesReceived() + "\nSent bytes: " + udp.getBytesSent() + "\n");
+		if (udp != null) {
+			System.out.println("Received: " + udp.getNumberOfReceived() + "\nUnparseable: " + udp
+					.getNumberOfUnparseable() + "\nSent: " + udp.getNumberOfSent() + "\nResent: " + udp
+					.getNumberOfResent() + "\nReceived bytes: " +
+
+					udp.getBytesReceived() + "\nSent bytes: " + udp.getBytesSent() + "\n");
+		}
 	}
 
 	/**
@@ -146,8 +170,8 @@ public class Window extends JFrame {
 
 			printStats();
 			System.out.println("Interrupting threads...");
-			receiver.interrupt();
-			consumer.interrupt();
+			if (receiver != null) receiver.interrupt();
+			if (consumer != null) consumer.interrupt();
 			System.out.println("Exiting...");
 			if (udp != null) udp.close();
 			System.exit(0);
@@ -172,10 +196,7 @@ public class Window extends JFrame {
 					JTextField nickField = new JTextField();
 					SpinnerNumberModel sModel = new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1);
 					JSpinner opponentsSpinner = new JSpinner(sModel);
-					JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField, new JLabel
-							("Enter" +
-
-							" " + "number of opponents:"), opponentsSpinner};
+					JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField, new JLabel("Enter number of opponents:"), opponentsSpinner};
 					int option = JOptionPane.showOptionDialog(Window.this, components, "New game", JOptionPane
 							.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 					if (option == JOptionPane.OK_OPTION) {
