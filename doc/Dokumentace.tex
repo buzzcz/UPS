@@ -41,7 +41,17 @@
 	\section{Protokol}
 	Z důvodu použití protokolu UDP bude potřeba řešit možnost ztráty, případně duplicity zpráv, nebo jejich špatné pořadí a poškození dat během přenosu. To bude vyřešeno tak, že každý zpráva bude obsahovat pořadové číslo a bude se na něj vyžadovat odpověď. Možnost ztráty spojení bude vyřešena tak, že se zprávy budou posílat opakovaně, dokud nebudou potvrzeny, a pokud klient některou nepotvrdí do stanovené doby, bude prohlášen za odpojeného. Stejně tak pokud neodpoví server, bude prohlášen za nedostupný. Zároveň se bude jednou za čas posílat zpráva typu \emph{“ping”} proto, aby se zamezilo výpadku spojení během tahu, tedy v době, kdy se žádné zprávy nezasílají. Možnost poškození dat během přenosu bude vyřešena pomocí \emph{checksumy}.
 
-	Komunikační protokol bude textový s oddělovačem \emph{‘;’}. Bude se skládat z pěti částí - \textbf{čísla zprávy, typu zprávy, kontrolního součtu, velikosti dat a dat}. Data budou jako oddělovač používat \emph{‘,’}. Klient bude pro jeho identifikaci serverem posílat v každé zprávě své jméno.
+	Komunikační protokol bude textový s oddělovačem \emph{‘;’}. Bude se skládat z pěti částí, viz tabulka \ref{Vzhled}. Data budou jako oddělovač používat \emph{‘,’}. Klient bude pro jeho identifikaci serverem posílat v každé zprávě své jméno.
+		\begin{table}[ht!]
+			\centering
+			\caption{Vzhled zprávy}
+			\label{Vzhled}
+			\begin{tabular}{| c | c | c | c | c |}
+				\hline
+				číslo zprávy & typ zprávy & checksum & velikost dat & data\\
+				\hline
+			\end{tabular}
+		\end{table}
 	
 	\subsection{Typy zpráv a dat}
 	Typ zprávy bude uveden číslem, u kterého bude dále popsán význam a naznačeno, jak budou vypadat data. Jako první v popisu bude uvedeno, zda bude paket od klienta na server (C), nebo od severu ke klientovi (S).
@@ -159,6 +169,8 @@
 	\end{figure}
 	
 	\section{Závěr}
-	Vytvoření hry bylo mnohonásobně těžší, než jsem očekával. Zabralo mi relativně velkou spoustu času, cca 80 až 120 hodin. Jedním z důvodů bylo to, že nebylo jednoduché správně implementovat komunikaci pomocí UDP protokolu a také to, že jsem si při návrhu nedokázal uvědomit všechny možné problémy a situace, které mohou nastat. Přes to všechno si myslím, že jsem zadání splnil.
+	Vytvoření hry bylo mnohonásobně těžší, než jsem očekával. Zabralo mi relativně velkou spoustu času, cca 80 až 120 hodin. Jedním z důvodů bylo to, že nebylo jednoduché správně implementovat komunikaci pomocí UDP protokolu a také to, že jsem si při návrhu nedokázal uvědomit všechny možné problémy a situace, které mohou nastat.
+	
+	Navrhl jsem komunikační protokol a vzhled zpráv, implementoval a otestoval program klienta i serveru. Zadaní se mi tedy podařilo splnit.
 	
 \end{document}
