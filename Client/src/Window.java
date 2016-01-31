@@ -196,7 +196,8 @@ public class Window extends JFrame {
 					JTextField nickField = new JTextField();
 					SpinnerNumberModel sModel = new SpinnerNumberModel(1, 1, Integer.MAX_VALUE, 1);
 					JSpinner opponentsSpinner = new JSpinner(sModel);
-					JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField, new JLabel("Enter number of opponents:"), opponentsSpinner};
+					JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField, new JLabel
+							("Enter number of opponents:"), opponentsSpinner};
 					int option = JOptionPane.showOptionDialog(Window.this, components, "New game", JOptionPane
 							.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
 					if (option == JOptionPane.OK_OPTION) {
@@ -331,9 +332,11 @@ public class Window extends JFrame {
 		addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyReleased(KeyEvent e) {
-				if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
-						.getKeyChar() == '\'' || e.getKeyChar() == ' ') && !alreadyGuessedLabel.getText().contains((e
-						.getKeyChar() + "").toUpperCase())) {
+				if (alreadyGuessedLabel.getText().contains((e.getKeyChar() + "").toUpperCase())) {
+					JOptionPane.showMessageDialog(Window.this, (e.getKeyChar() + "").toUpperCase() + " has already " +
+							"been guessed", "Letter already guessed", JOptionPane.ERROR_MESSAGE);
+				} else if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
+						.getKeyChar() == '\'' || e.getKeyChar() == ' ')) {
 					String data = e.getKeyChar() + "";
 					Message m = new Message(udp.increaseSentDatagrams(), 16, nick.length() + 1 + data.length(), nick +
 							"," + data.toUpperCase());
