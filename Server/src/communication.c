@@ -340,13 +340,15 @@ void respond_type_3(int server_socket, struct player *player, struct game **game
  *
  * sent_messages: list of sent messages to store the message until it is acknowledged
  * */
-void respond_type_5(int server_socket, struct game **games, struct player *player, struct list **sent_messages) {
+void respond_type_5(int server_socket, struct game **games, struct player *player, struct message received,
+                    struct list **sent_messages) {
 	struct message message;
 	struct game *game;
 	int size, i, j;
 	char *word;
 
-	game = find_game(games, player->game);
+	if (player == NULL) game = NULL;
+	else game = find_game(games, player->game);
 
 	if (game != NULL) {
 		word = malloc(strlen(game->guessed_word) + 1);
@@ -386,10 +388,25 @@ void respond_type_5(int server_socket, struct game **games, struct player *playe
 			send_your_move(server_socket, game, sent_messages, 0);
 		}
 	} else {
+		if (player == NULL) {
+			player = malloc(sizeof(struct player));
+			player->client_addr = received.client_addr;
+			player->client_addr_length = received.client_addr_length;
+			player->sent_datagrams = 1;
+			player->received_datagrams = 0;
+			player->state = 1;
+			player->opponents = 0;
+			player->game = -1;
+			player->wrong_guesses = 0;
+			player->name = malloc(strlen(received.nick));
+			strcpy(player->name, received.nick);
+			send_ack(server_socket, player, received);
+		}
 		message.number = player->sent_datagrams++;
 		message.type = 6;
 		message.data_size = 4;
 		message.data = "-1,1";
+		calculate_checksum(&message);
 		send_message(server_socket, player, message, sent_messages, 1);
 	}
 }
@@ -738,7 +755,7 @@ void *respond(void *thread_data) {
 						respond_type_3(server_socket, player, games, *received, data->sent_messages);
 						break;
 					case 5: // Reconnect request
-						respond_type_5(server_socket, games, player, data->sent_messages);
+						respond_type_5(server_socket, games, player, *received, data->sent_messages);
 						break;
 					case 8:    // Disconnecting
 						respond_type_8(server_socket, games, player, data->sent_messages);
