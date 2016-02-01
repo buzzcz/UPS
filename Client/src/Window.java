@@ -73,7 +73,7 @@ public class Window extends JFrame {
 		boolean ok = false;
 		while (!ok) {
 			JTextField addressField = new JTextField();
-			SpinnerNumberModel sModel = new SpinnerNumberModel(1, 1, 65535, 1);
+			SpinnerNumberModel sModel = new SpinnerNumberModel(10000, 1, 65535, 1);
 			JSpinner portSpinner = new JSpinner(sModel);
 			JComponent[] components = new JComponent[]{new JLabel("Enter server address:"), addressField, new JLabel
 					("Enter server port:"), portSpinner};
