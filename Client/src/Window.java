@@ -351,17 +351,26 @@ public class Window extends JFrame {
 					}
 					game.setMyMove(false);
 				} else if (game != null && game.isMyMove() && e.getKeyCode() == KeyEvent.VK_ENTER) {
-					JTextField wordField = new JTextField();
-					JComponent[] components = new JComponent[]{new JLabel("Enter guessed word:"), wordField};
-					int option = JOptionPane.showOptionDialog(Window.this, components, "Guessing word", JOptionPane
-							.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
-					if (option == JOptionPane.OK_OPTION) {
-						Message m = new Message(udp.increaseSentDatagrams(), 19, nick.length() + 1 + wordField.getText
-								().length(), nick + "," + wordField.getText().toUpperCase());
-						udp.sendMessage(m, receiver.getSentMessages(), true);
-						lastGuessed = wordField.getText().toUpperCase();
-						setStatusLabelText("You guessed " + wordField.getText().toUpperCase());
-						game.setMyMove(false);
+					boolean ok = false;
+
+					while (!ok) {
+						JTextField wordField = new JTextField();
+						JComponent[] components = new JComponent[]{new JLabel("Enter guessed word:"), wordField};
+						int option = JOptionPane.showOptionDialog(Window.this, components, "Guessing word",
+								JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+						if (option == JOptionPane.OK_OPTION) {
+							String guess = wordField.getText().toUpperCase();
+							if (!guess.trim().isEmpty()) {
+								ok = true;
+								Message m = new Message(udp.increaseSentDatagrams(), 19, nick.length() + 1 + wordField
+										.getText().length(), nick + "," + wordField.getText().toUpperCase());
+
+								udp.sendMessage(m, receiver.getSentMessages(), true);
+								lastGuessed = wordField.getText().toUpperCase();
+								setStatusLabelText("You guessed " + wordField.getText().toUpperCase());
+								game.setMyMove(false);
+							}
+						}
 					}
 				}
 			}
