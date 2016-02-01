@@ -332,7 +332,8 @@ public class Window extends JFrame {
 		addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyReleased(KeyEvent e) {
-				if (alreadyGuessedLabel.getText().contains((e.getKeyChar() + "").toUpperCase())) {
+				if (game != null && game.isMyMove() && alreadyGuessedLabel.getText().contains((e.getKeyChar() + "")
+						.toUpperCase())) {
 					JOptionPane.showMessageDialog(Window.this, (e.getKeyChar() + "").toUpperCase() + " has already " +
 							"been guessed", "Letter already guessed", JOptionPane.ERROR_MESSAGE);
 				} else if (game != null && game.isMyMove() && ((e.getKeyChar() >= 'a' && e.getKeyChar() <= 'z') || e
