@@ -83,7 +83,7 @@ void ack_message(struct game **games, struct list **sent_messages, struct messag
 			if (iter->player->game == -1) {
 				free(iter->player->name);
 				free(iter->player);
-			} else if (iter->message.type == 12) {
+			} else if (iter->message.type == 12 || iter->message.type == 13) {
 				int j;
 				struct list *look;
 
