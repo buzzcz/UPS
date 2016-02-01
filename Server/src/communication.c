@@ -754,7 +754,7 @@ void *respond(void *thread_data) {
 					if (player->state == 0) {
 						player->state = 1;
 					}
-				} else if (player == NULL && received->type != 3 && received->type != 5) {
+				} else if (player == NULL && received->type != 3 && received->type != 5 && received->type != 1) {
 					printf("Unknown player\n");
 					respond_type_5(server_socket, games, player, *received, data->sent_messages);
 					pthread_mutex_unlock(data->mutex);
