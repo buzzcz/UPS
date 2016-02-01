@@ -7,7 +7,7 @@ void add_message(struct list **l, struct message message, struct player *player,
 
 struct message *get_message(struct list **l);
 
-void ack_message(struct list **sent_messages, struct message *ack);
+void ack_message(struct game **games, struct list **sent_messages, struct message *ack);
 
 void free_list(struct list *l);
 

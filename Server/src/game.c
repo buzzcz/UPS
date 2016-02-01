@@ -283,7 +283,6 @@ void remove_game(struct game **games, int id, struct list **sent_messages) {
 				if (iter->players[i] != NULL) {
 					struct list *list, *list_prev, *list_next;
 
-					free_player(iter->players[i]);
 					list = *sent_messages;
 					list_prev = NULL;
 					list_next = NULL;
@@ -303,6 +302,7 @@ void remove_game(struct game **games, int id, struct list **sent_messages) {
 						list_prev = list;
 						list = list->next;
 					}
+					free_player(iter->players[i]);
 				}
 			}
 			free(iter->players);

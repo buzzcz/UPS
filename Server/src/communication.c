@@ -499,8 +499,6 @@ void send_win(int server_socket, struct player *player, struct game **games, str
 			send_message(server_socket, game->players[i], message, sent_messages, 1);
 		}
 	}
-
-	remove_game(games, game->id, sent_messages);
 }
 
 /*
@@ -759,12 +757,13 @@ void *respond(void *thread_data) {
 				} else if (player == NULL && received->type != 3 && received->type != 5) {
 					printf("Unknown player\n");
 					respond_type_5(server_socket, games, player, *received, data->sent_messages);
+					pthread_mutex_unlock(data->mutex);
 					continue;
 				}
 
 				switch (received->type) {
 					case 1: //Ack
-						ack_message(data->sent_messages, received);
+						ack_message(games, data->sent_messages, received);
 						break;
 					case 3: // Connect request
 						respond_type_3(server_socket, player, games, *received, data->sent_messages);

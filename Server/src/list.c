@@ -2,6 +2,7 @@
 #include <string.h>
 #include <time.h>
 #include "list.h"
+#include "game.h"
 
 /*
  * Adds message to a list or creates new one
@@ -67,7 +68,7 @@ struct message *get_message(struct list **l) {
  *
  * ack: acknowledgement for a message
  * */
-void ack_message(struct list **sent_messages, struct message *ack) {
+void ack_message(struct game **games, struct list **sent_messages, struct message *ack) {
 	struct list *iter, *prev, *next;
 	int ack_number;
 
@@ -82,6 +83,27 @@ void ack_message(struct list **sent_messages, struct message *ack) {
 			if (iter->player->game == -1) {
 				free(iter->player->name);
 				free(iter->player);
+			} else if (iter->message.type == 12) {
+				int j;
+				struct list *look;
+
+				iter->next = NULL;
+				if (prev == NULL) *sent_messages = next;
+
+				j = 0;
+				look = *sent_messages;
+				while (look != NULL) {
+					if (look->player->game == iter->player->game) {
+						j++;
+						break;
+					}
+					look = look->next;
+				}
+				if (j == 0) {
+					remove_game(games, iter->player->game, sent_messages);
+				}
+				free_list(iter);
+				break;
 			}
 			iter->next = NULL;
 			free_list(iter);
