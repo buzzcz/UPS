@@ -81,26 +81,11 @@ public class Connection {
 	 * @param host host address of the socket
 	 * @param port port of the socket
 	 */
-	public Connection(String host, int port) {
-		try {
-			this.host = InetAddress.getByName(host);
-		} catch (UnknownHostException e) {
-			System.out.println("Host " + host + " unknown");
-			System.exit(-1);
-		}
+	public Connection(String host, int port) throws UnknownHostException, SocketException {
+		this.host = InetAddress.getByName(host);
 		this.port = port;
-		try {
-			socket = new DatagramSocket();
-		} catch (SocketException e) {
-			System.out.println("Socket could not be made");
-			System.exit(-1);
-		}
-		try {
-			socket.setSoTimeout(TIMEOUT);
-		} catch (SocketException e) {
-			System.out.println("Socket timeout could not be set");
-			System.exit(-1);
-		}
+		socket = new DatagramSocket();
+		socket.setSoTimeout(TIMEOUT);
 		lock = new ReentrantLock();
 		sentDatagrams = 0;
 		receivedDatagrams = 0;
@@ -139,7 +124,7 @@ public class Connection {
 					Collections.sort(sentMessages, new Comparator<Message>() {
 						@Override
 						public int compare(Message o1, Message o2) {
-							return ((Integer)o1.getNumber()).compareTo(o2.getNumber());
+							return ((Integer) o1.getNumber()).compareTo(o2.getNumber());
 						}
 					});
 				}

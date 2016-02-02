@@ -3,6 +3,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -68,28 +71,8 @@ public class Window extends JFrame {
 		initWindow();
 		this.setVisible(true);
 
-		String host = null;
-		int port = 0;
-		boolean ok = false;
-		while (!ok) {
-			JTextField addressField = new JTextField();
-			SpinnerNumberModel sModel = new SpinnerNumberModel(10000, 1, 65535, 1);
-			JSpinner portSpinner = new JSpinner(sModel);
-			JComponent[] components = new JComponent[]{new JLabel("Enter server address:"), addressField, new JLabel
-					("Enter server port:"), portSpinner};
+		parameters();
 
-			int option = JOptionPane.showOptionDialog(Window.this, components, "Connection", JOptionPane
-					.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
-			if (option == JOptionPane.OK_OPTION) {
-				host = addressField.getText();
-				if (!host.trim().isEmpty()) ok = true;
-				port = Integer.parseInt(portSpinner.getValue().toString());
-			} else {
-				exitClient();
-			}
-		}
-
-		udp = new Connection(host, port);
 		receiver = new Receiver(udp, this);
 		consumer = new ProcessMessage(udp, receiver, this);
 		ping = new Thread(new Runnable() {
@@ -115,7 +98,7 @@ public class Window extends JFrame {
 						}
 						Thread.sleep(Receiver.TIME_TO_ACK + 1000);
 					} catch (InterruptedException e) {
-						e.printStackTrace();
+
 					}
 				}
 			}
@@ -124,6 +107,40 @@ public class Window extends JFrame {
 		game = null;
 		nick = null;
 		opponents = 0;
+	}
+
+	private void parameters() {
+		String host = null;
+		int port = 0;
+		boolean ok = false;
+		while (!ok) {
+			JTextField addressField = new JTextField("localhost");
+			SpinnerNumberModel sModel = new SpinnerNumberModel(10000, 1, 65535, 1);
+			JSpinner portSpinner = new JSpinner(sModel);
+			JComponent[] components = new JComponent[]{new JLabel("Enter server address:"), addressField, new JLabel
+					("Enter server port:"), portSpinner};
+
+			int option = JOptionPane.showOptionDialog(Window.this, components, "Connection", JOptionPane
+					.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+			if (option == JOptionPane.OK_OPTION) {
+				host = addressField.getText();
+				if (!host.trim().isEmpty()) ok = true;
+				port = Integer.parseInt(portSpinner.getValue().toString());
+				try {
+					udp = new Connection(host, port);
+				} catch (UnknownHostException e) {
+					ok = false;
+					JOptionPane.showMessageDialog(this, "Host " + host + " unknown", "Host unknown", JOptionPane
+							.ERROR_MESSAGE);
+				} catch (SocketException e) {
+					ok = false;
+					JOptionPane.showMessageDialog(this, "Socket could not have been made", "Create socket error",
+							JOptionPane.ERROR_MESSAGE);
+				}
+			} else {
+				exitClient();
+			}
+		}
 	}
 
 	/**
@@ -172,6 +189,7 @@ public class Window extends JFrame {
 			System.out.println("Interrupting threads...");
 			if (receiver != null) receiver.interrupt();
 			if (consumer != null) consumer.interrupt();
+			if (ping != null) ping.interrupt();
 			System.out.println("Exiting...");
 			if (udp != null) udp.close();
 			System.exit(0);
@@ -204,6 +222,9 @@ public class Window extends JFrame {
 						nick = nickField.getText();
 						if (!nick.trim().isEmpty()) {
 							ok = true;
+							setStatusLabelText("No Game");
+							game = null;
+							receiver.setSentMessages(new ArrayList<Message>());
 							udp.setSentDatagrams(0);
 							udp.setReceivedDatagrams(0);
 							opponents = (Integer) opponentsSpinner.getValue();
@@ -216,21 +237,30 @@ public class Window extends JFrame {
 				}
 			}
 		});
-		JMenuItem reconnect = new JMenuItem("Reconnect");
+		final JMenuItem reconnect = new JMenuItem("Reconnect");
 		reconnect.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
 		reconnect.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JTextField nickField = new JTextField();
-				JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField};
-				int result = JOptionPane.showOptionDialog(Window.this, components, "Reconnect", JOptionPane
-						.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
-				if (result == JOptionPane.OK_OPTION) {
-					nick = nickField.getText();
-					udp.setSentDatagrams(0);
-					udp.setReceivedDatagrams(0);
-					Message m = new Message(udp.increaseSentDatagrams(), 5, nick.length(), nick);
-					udp.sendMessage(m, receiver.getSentMessages(), true);
+				boolean ok = false;
+				while (!ok) {
+					JTextField nickField = new JTextField();
+					JComponent[] components = new JComponent[]{new JLabel("Enter nickname:"), nickField};
+					int result = JOptionPane.showOptionDialog(Window.this, components, "Reconnect", JOptionPane
+							.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
+					if (result == JOptionPane.OK_OPTION) {
+						nick = nickField.getText();
+						if (!nick.trim().isEmpty()) {
+							ok = true;
+							setStatusLabelText("No Game");
+							game = null;
+							receiver.setSentMessages(new ArrayList<Message>());
+							udp.setSentDatagrams(0);
+							udp.setReceivedDatagrams(0);
+							Message m = new Message(udp.increaseSentDatagrams(), 5, nick.length(), nick);
+							udp.sendMessage(m, receiver.getSentMessages(), true);
+						}
+					} else ok = true;
 				}
 			}
 		});
