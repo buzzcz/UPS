@@ -222,7 +222,10 @@ struct message receive_message(int server_socket) {
 			}
 			m.data = malloc(m.data_size * sizeof(char));
 			strcpy(m.data, tmp);
-		} else m.data = NULL;
+		} else {
+			m.data = NULL;
+			m.data_size += 1;
+		}
 		m.client_addr = client_addr;
 		m.client_addr_length = client_addr_length;
 
