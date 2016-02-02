@@ -133,7 +133,6 @@ public class Message {
 				if (dataSize != 0) return false;
 				return true;
 			default:
-				System.out.println("Unknown message type " + type);
 				return false;
 		}
 	}

@@ -48,72 +48,74 @@ public class ProcessMessage extends Thread {
 				udp.getLock().lock();
 				if (window.getGame() != null || received.getType() == 1 || received.getType() == 4 || received.getType
 						() == 6) {
-					if (received.checkChecksum() && received.checkData()) {
-						if (received.getNumber() == udp.getReceivedDatagrams() + 1 || received.getType() == 1 ||
-								received.getType() == 4 || received.getType() == 6 || received.getType() == 21) {
+					if (received.checkChecksum()) {
+						if (received.checkData()) {
+							if (received.getNumber() == udp.getReceivedDatagrams() + 1 || received.getType() == 1 ||
+									received.getType() == 4 || received.getType() == 6 || received.getType() == 21) {
 
-							if (received.getType() != 1) {
-								if (received.getType() != 21) udp.increaseReceivedDatagrams();
+								if (received.getType() != 1) {
+									if (received.getType() != 21) udp.increaseReceivedDatagrams();
+									sendAck(String.valueOf(received.getNumber()));
+								}
+
+								switch (received.getType()) {
+									case 1: // Ack
+										receiver.ackMessage(received);
+										break;
+									case 2: // Unreachable client
+										respondType2(received);
+										break;
+									case 4: // Answer to connect request
+										respondType4(received);
+										break;
+									case 6: // Answer to reconnect request
+										respondType6(received);
+										break;
+									case 7: // Start of game
+										respondType7(received);
+										break;
+									case 9: // Someone disconnected
+										respondType9(received);
+										break;
+									case 10:    // You lost
+										respondType10();
+										break;
+									case 11:    // Someone lost
+										respondType11(received);
+										break;
+									case 12:    // You won (end of game, you guessed the word)
+										respondType12();
+										break;
+									case 13:    // Someone won
+										respondType13(received);
+										break;
+									case 14:    // Your move
+										respondType14();
+										break;
+									case 15:    // Someone's move
+										respondType15(received);
+										break;
+									case 17:    // Answer to move
+										respondType17(received);
+										break;
+									case 18:    // Someone made a move
+										respondType18(received);
+										break;
+									case 20:    // Someone tried to guess the word
+										respondType20(received);
+										break;
+									case 21:    // Ping
+										break;
+									case 22:    // Not responding player
+										respondType22(received);
+										break;
+								}
+							} else if (received.getNumber() <= udp.getReceivedDatagrams()) {
 								sendAck(String.valueOf(received.getNumber()));
-							}
-
-							switch (received.getType()) {
-								case 1: // Ack
-									receiver.ackMessage(received);
-									break;
-								case 2: // Unreachable client
-									respondType2(received);
-									break;
-								case 4: // Answer to connect request
-									respondType4(received);
-									break;
-								case 6: // Answer to reconnect request
-									respondType6(received);
-									break;
-								case 7: // Start of game
-									respondType7(received);
-									break;
-								case 9: // Someone disconnected
-									respondType9(received);
-									break;
-								case 10:    // You lost
-									respondType10();
-									break;
-								case 11:    // Someone lost
-									respondType11(received);
-									break;
-								case 12:    // You won (end of game, you guessed the word)
-									respondType12();
-									break;
-								case 13:    // Someone won
-									respondType13(received);
-									break;
-								case 14:    // Your move
-									respondType14();
-									break;
-								case 15:    // Someone's move
-									respondType15(received);
-									break;
-								case 17:    // Answer to move
-									respondType17(received);
-									break;
-								case 18:    // Someone made a move
-									respondType18(received);
-									break;
-								case 20:    // Someone tried to guess the word
-									respondType20(received);
-									break;
-								case 21:    // Ping
-									break;
-								case 22:    // Not responding player
-									respondType22(received);
-									break;
-							}
-						} else if (received.getNumber() <= udp.getReceivedDatagrams()) {
-							sendAck(String.valueOf(received.getNumber()));
-						} else
-							System.out.println("Number not correct: " + received.getNumber() + ", expecting: " + (udp
-									.getReceivedDatagrams() + 1));
+							} else System.out.println("Number not correct: " + received.getNumber() + ", expecting: " +
+									(udp.getReceivedDatagrams() + 1));
+						} else System.out.println("Wrong data size: " + received.getDataSize() + " or unknown type: " +
+								received.getType());
 					} else System.out.println("Wrong checksum");
 				}
 				udp.getLock().unlock();
