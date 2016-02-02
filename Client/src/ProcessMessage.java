@@ -48,7 +48,7 @@ public class ProcessMessage extends Thread {
 				udp.getLock().lock();
 				if (window.getGame() != null || received.getType() == 1 || received.getType() == 4 || received.getType
 						() == 6) {
-					if (received.checkChecksum()) {
+					if (received.checkChecksum() && received.checkData()) {
 						if (received.getNumber() == udp.getReceivedDatagrams() + 1 || received.getType() == 1 ||
 								received.getType() == 4 || received.getType() == 6 || received.getType() == 21) {
 
@@ -107,9 +107,6 @@ public class ProcessMessage extends Thread {
 									break;
 								case 22:    // Not responding player
 									respondType22(received);
-									break;
-								default:
-									System.out.println("Unknown type");
 									break;
 							}
 						} else if (received.getNumber() <= udp.getReceivedDatagrams()) {

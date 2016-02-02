@@ -98,6 +98,47 @@ public class Message {
 	}
 
 	/**
+	 * Checks if size of received data is alright based on type of message
+	 *
+	 * @return <code>true</code> if ok;<code>false</code> otherwise
+	 */
+	public boolean checkData() {
+		switch (type) {
+			case 1: // Ack
+			case 4: // Answer to connect request
+				if (dataSize <= 0) return false;
+				try {
+					Integer.parseInt(data);
+				} catch (NumberFormatException e) {
+					return false;
+				}
+				return true;
+			case 2: // Unreachable client
+			case 6: // Answer to reconnect request
+			case 7: // Start of game
+			case 9: // Someone disconnected
+			case 11:    // Someone lost
+			case 13:    // Someone won
+			case 15:    // Someone's move
+			case 17:    // Answer to move
+			case 18:    // Someone made a move
+			case 20:    // Someone tried to guess the word
+			case 22:    // Not responding player
+				if (dataSize <= 0) return false;
+				return true;
+			case 10:    // You lost
+			case 12:    // You won (end of game, you guessed the word)
+			case 14:    // Your move
+			case 21:    // Ping
+				if (dataSize != 0) return false;
+				return true;
+			default:
+				System.out.println("Unknown message type " + type);
+				return false;
+		}
+	}
+
+	/**
 	 * Getter for a number of message
 	 *
 	 * @return number of message
