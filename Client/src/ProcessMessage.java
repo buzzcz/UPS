@@ -231,19 +231,28 @@ public class ProcessMessage extends Thread {
 	}
 
 	private void respondType17(Message received) {
-		boolean hit = false;
-		String word = window.getGuessedWordLabelText(), newWord = "";
-		for (int i = 0; i < received.getData().length(); i++) {
-			if (received.getData().charAt(i) == '1') {
-				newWord += window.getLastGuessed();
-				hit = true;
-			} else newWord += word.charAt(i);
+		String data[] = received.getData().split(",");
+		if (data.length > 1 && data[1].equals("-1")) {
+			JOptionPane.showMessageDialog(window, data[0].toUpperCase() + " is not a valid guessed", "Invalid guess",
+					JOptionPane.ERROR_MESSAGE);
+		} else if (data.length > 1 && data[1].equals("-2")) {
+			JOptionPane.showMessageDialog(window, data[0].toUpperCase() + " has already been guessed", "Letter " +
+					"already guessed", JOptionPane.ERROR_MESSAGE);
+		} else {
+			boolean hit = false;
+			String word = window.getGuessedWordLabelText(), newWord = "";
+			for (int i = 0; i < received.getData().length(); i++) {
+				if (received.getData().charAt(i) == '1') {
+					newWord += window.getLastGuessed();
+					hit = true;
+				} else newWord += word.charAt(i);
+			}
+			if (!hit) {
+				window.getGame().wrongGuess();
+				window.getCanvas().wrongGuess();
+			}
+			window.setGuessedWordLabelText(newWord);
 		}
-		if (!hit) {
-			window.getGame().wrongGuess();
-			window.getCanvas().wrongGuess();
-		}
-		window.setGuessedWordLabelText(newWord);
 	}
 
 	private void respondType18(Message received) {
