@@ -93,9 +93,11 @@ int check_data(struct message *received) {
 		case 21:    // Ping
 			if (received->data_size != 0) return 0;
 			return 1;
-		case 16:    // Move
 		case 19:    // Guessing the word
 			if (received->data_size <= 0) return 0;
+			return 1;
+		case 16:    // Move
+			if (received->data_size != 1) return 0;
 			return 1;
 		default:
 			return 0;
@@ -640,38 +642,50 @@ void respond_type_16(int server_socket, struct game **games, struct player *play
 	message.type = 17;
 	message.data_size = (int) strlen(game->guessed_word);
 	reply = check_guess(game, received, (size_t) message.data_size);
-	message.data = reply;
-	calculate_checksum(&message);
-	send_message(server_socket, player, message, sent_messages, 1);
+	if (strcmp(reply, "-1") == 0 || strcmp(reply, "-2") == 0) {
+		message.data_size = (int) strlen(reply) + 2;
+		message.data = malloc(message.data_size * sizeof(char));
+		sprintf(message.data, "%c,%s", received.data[0], reply);
+		calculate_checksum(&message);
+		send_message(server_socket, player, message, sent_messages, 1);
 
-	message.type = 18;
-	message.data_size = (int) strlen(player->name) + 3 + message.data_size;
-	message.data = malloc((size_t) message.data_size + 1);
-	sprintf(message.data, "%s,%c,%s", player->name, received.data[0], reply);
+		free(message.data);
 
-	for (i = 0; i < game->players_count; i++) {
-		if (strcmp(game->players[i]->name, player->name) != 0) {
-			message.number = game->players[i]->sent_datagrams++;
-			calculate_checksum(&message);
-			send_message(server_socket, game->players[i], message, sent_messages, 1);
-		}
-	}
-
-	if (strchr(reply, '1') == NULL) {
-		player->wrong_guesses++;
-		i = 1;
-	} else i = 0;
-
-	free(reply);
-	free(message.data);
-
-	if (strlen(game->guessed_word) == game->filled_word) {
-		send_win(server_socket, player, games, game, sent_messages);
-	} else if (player->wrong_guesses == 11) {
-		send_lose(server_socket, player, game, sent_messages);
-		send_your_move(server_socket, game, sent_messages, 1);
+		send_your_move(server_socket, game, sent_messages, 0);
 	} else {
-		send_your_move(server_socket, game, sent_messages, i);
+		message.data = reply;
+		calculate_checksum(&message);
+		send_message(server_socket, player, message, sent_messages, 1);
+
+		message.type = 18;
+		message.data_size = (int) strlen(player->name) + 3 + message.data_size;
+		message.data = malloc((size_t) message.data_size + 1);
+		sprintf(message.data, "%s,%c,%s", player->name, received.data[0], reply);
+
+		for (i = 0; i < game->players_count; i++) {
+			if (strcmp(game->players[i]->name, player->name) != 0) {
+				message.number = game->players[i]->sent_datagrams++;
+				calculate_checksum(&message);
+				send_message(server_socket, game->players[i], message, sent_messages, 1);
+			}
+		}
+
+		if (strchr(reply, '1') == NULL) {
+			player->wrong_guesses++;
+			i = 1;
+		} else i = 0;
+
+		free(reply);
+		free(message.data);
+
+		if (strlen(game->guessed_word) == game->filled_word) {
+			send_win(server_socket, player, games, game, sent_messages);
+		} else if (player->wrong_guesses == 11) {
+			send_lose(server_socket, player, game, sent_messages);
+			send_your_move(server_socket, game, sent_messages, 1);
+		} else {
+			send_your_move(server_socket, game, sent_messages, i);
+		}
 	}
 }
 

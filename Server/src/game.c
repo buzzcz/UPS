@@ -132,20 +132,30 @@ char *check_guess(struct game *game, struct message received, size_t data_size) 
 	int i;
 
 	guess = received.data[0];
-	if (guess == '\'') game->guessed_letters[26] = guess;
-	else game->guessed_letters[guess - 'A'] = guess;
-
-	checked = malloc(data_size + 1);
-	checked[data_size] = '\0';
-	for (i = 0; i < data_size; i++) {
-		if (game->guessed_word[i] == guess) {
-			checked[i] = '1';
-			game->filled_word++;
+	if ((guess >= 'A' && guess <= 'Z') || guess == '\'' || guess == ' ') {
+		if (guess == '\'') {
+			if (game->guessed_letters[26] == '0') game->guessed_letters[26] = guess;
+			else return "-2";
 		}
-		else checked[i] = '0';
-	}
+		else {
+			if (game->guessed_letters[guess - 'A'] == '0') game->guessed_letters[guess - 'A'] = guess;
+			else return "-2";
+		}
 
-	return checked;
+		checked = malloc(data_size + 1);
+		checked[data_size] = '\0';
+		for (i = 0; i < data_size; i++) {
+			if (game->guessed_word[i] == guess) {
+				checked[i] = '1';
+				game->filled_word++;
+			}
+			else checked[i] = '0';
+		}
+
+		return checked;
+	} else {
+		return "-1";
+	}
 }
 
 /*
